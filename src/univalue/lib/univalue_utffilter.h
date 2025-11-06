@@ -1,43 +1,45 @@
 // Copyright 2016 Wladimir J. van der Laan
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+
 #ifndef UNIVALUE_UTFFILTER_H
 #define UNIVALUE_UTFFILTER_H
 
 #include <string>
 
-/**
- * Filter that generates and validates UTF-8, as well as collates UTF-16
- * surrogate pairs as specified in RFC4627.
- */
 class JSONUTF8StringFilter
 {
 public:
-    explicit JSONUTF8StringFilter(std::string &s):
-        str(s), is_valid(true), codepoint(0), state(0), surpair(0)
+    explicit JSONUTF8StringFilter(std::string& s) : str(s), is_valid(true), codepoint(0), state(0), surpair(0)
     {
     }
-    // Write single 8-bit char (may be part of UTF-8 sequence)
+
+
     void push_back(unsigned char ch)
     {
         if (state == 0) {
-            if (ch < 0x80) // 7-bit ASCII, fast direct pass-through
+            if (ch < 0x80)
+
                 str.push_back(ch);
-            else if (ch < 0xc0) // Mid-sequence character, invalid in this state
+            else if (ch < 0xc0)
+
                 is_valid = false;
-            else if (ch < 0xe0) { // Start of 2-byte sequence
+            else if (ch < 0xe0) {
                 codepoint = (ch & 0x1f) << 6;
                 state = 6;
-            } else if (ch < 0xf0) { // Start of 3-byte sequence
+            } else if (ch < 0xf0) {
                 codepoint = (ch & 0x0f) << 12;
                 state = 12;
-            } else if (ch < 0xf8) { // Start of 4-byte sequence
+            } else if (ch < 0xf8) {
                 codepoint = (ch & 0x07) << 18;
                 state = 18;
-            } else // Reserved, invalid
+            } else
+
                 is_valid = false;
         } else {
-            if ((ch & 0xc0) != 0x80) // Not a continuation, invalid
+            if ((ch & 0xc0) != 0x80)
+
                 is_valid = false;
             state -= 6;
             codepoint |= (ch & 0x3f) << state;
@@ -45,56 +47,53 @@ public:
                 push_back_u(codepoint);
         }
     }
-    // Write codepoint directly, possibly collating surrogate pairs
+
+
     void push_back_u(unsigned int codepoint_)
     {
-        if (state) // Only accept full codepoints in open state
+        if (state)
+
             is_valid = false;
-        if (codepoint_ >= 0xD800 && codepoint_ < 0xDC00) { // First half of surrogate pair
-            if (surpair) // Two subsequent surrogate pair openers - fail
+        if (codepoint_ >= 0xD800 && codepoint_ < 0xDC00) {
+            if (surpair)
+
                 is_valid = false;
             else
                 surpair = codepoint_;
-        } else if (codepoint_ >= 0xDC00 && codepoint_ < 0xE000) { // Second half of surrogate pair
-            if (surpair) { // Open surrogate pair, expect second half
-                // Compute code point from UTF-16 surrogate pair
-                append_codepoint(0x10000 | ((surpair - 0xD800)<<10) | (codepoint_ - 0xDC00));
+        } else if (codepoint_ >= 0xDC00 && codepoint_ < 0xE000) {
+            if (surpair) {
+                append_codepoint(0x10000 | ((surpair - 0xD800) << 10) | (codepoint_ - 0xDC00));
                 surpair = 0;
-            } else // Second half doesn't follow a first half - fail
+            } else
+
                 is_valid = false;
         } else {
-            if (surpair) // First half of surrogate pair not followed by second - fail
+            if (surpair)
+
                 is_valid = false;
             else
                 append_codepoint(codepoint_);
         }
     }
-    // Check that we're in a state where the string can be ended
-    // No open sequences, no open surrogate pairs, etc
+
+
     bool finalize()
     {
         if (state || surpair)
             is_valid = false;
         return is_valid;
     }
-private:
-    std::string &str;
-    bool is_valid;
-    // Current UTF-8 decoding state
-    unsigned int codepoint;
-    int state; // Top bit to be filled in for next UTF-8 byte, or 0
 
-    // Keep track of the following state to handle the following section of
-    // RFC4627:
-    //
-    //    To escape an extended character that is not in the Basic Multilingual
-    //    Plane, the character is represented as a twelve-character sequence,
-    //    encoding the UTF-16 surrogate pair.  So, for example, a string
-    //    containing only the G clef character (U+1D11E) may be represented as
-    //    "\uD834\uDD1E".
-    //
-    //  Two subsequent \u.... may have to be replaced with one actual codepoint.
-    unsigned int surpair; // First half of open UTF-16 surrogate pair, or 0
+private:
+    std::string& str;
+    bool is_valid;
+
+
+    unsigned int codepoint;
+    int state;
+
+
+    unsigned int surpair;
 
     void append_codepoint(unsigned int codepoint_)
     {

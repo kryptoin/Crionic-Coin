@@ -28,15 +28,12 @@ void base_blob<BITS>::SetHex(const char* psz)
 {
     memset(data, 0, sizeof(data));
 
-    // skip leading spaces
     while (isspace(*psz))
         psz++;
 
-    // skip 0x
     if (psz[0] == '0' && tolower(psz[1]) == 'x')
         psz += 2;
 
-    // hex string to uint
     const char* pbegin = psz;
     while (::HexDigit(*psz) != -1)
         psz++;
@@ -64,14 +61,12 @@ std::string base_blob<BITS>::ToString() const
     return (GetHex());
 }
 
-// Explicit instantiations for base_blob<160>
 template base_blob<160>::base_blob(const std::vector<unsigned char>&);
 template std::string base_blob<160>::GetHex() const;
 template std::string base_blob<160>::ToString() const;
 template void base_blob<160>::SetHex(const char*);
 template void base_blob<160>::SetHex(const std::string&);
 
-// Explicit instantiations for base_blob<256>
 template base_blob<256>::base_blob(const std::vector<unsigned char>&);
 template std::string base_blob<256>::GetHex() const;
 template std::string base_blob<256>::ToString() const;

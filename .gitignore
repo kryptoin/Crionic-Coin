@@ -1,10 +1,10 @@
-*.tar.gz
+# ============================================================
+# Crionic Core - .gitignore
+# ============================================================
 
-*.exe
-<<<<<<< HEAD
-=======
-
->>>>>>> crionic2/master
+# ------------------------------------------------------------
+# Compiled binaries and executables
+# ------------------------------------------------------------
 src/crionic
 src/crionicd
 src/crionic-cli
@@ -12,138 +12,153 @@ src/crionic-tx
 src/test/test_crionic
 src/test/test_crionic_fuzzy
 src/qt/test/test_crionic-qt
+crionic-qt
+crionic-Qt.app
+crionic-qt_test
 
-<<<<<<< HEAD
-=======
+*.exe
+*.tar.gz
 
->>>>>>> crionic2/master
-# autoreconf
+# ------------------------------------------------------------
+# Build system (Autotools, libtool)
+# ------------------------------------------------------------
+Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache/
-build-aux/config.guess
-build-aux/config.sub
-build-aux/depcomp
-build-aux/install-sh
-build-aux/ltmain.sh
-build-aux/m4/libtool.m4
-build-aux/m4/lt~obsolete.m4
-build-aux/m4/ltoptions.m4
-build-aux/m4/ltsugar.m4
-build-aux/m4/ltversion.m4
-build-aux/missing
-build-aux/compile
-build-aux/test-driver
 config.log
 config.status
 configure
 libtool
+libbitcoinconsensus.pc
+
+build-aux/
+build-aux/m4/
+build-aux/*.m4
+build-aux/compile
+build-aux/test-driver
+
+# ------------------------------------------------------------
+# Generated configuration and source files
+# ------------------------------------------------------------
 src/config/bitcoin-config.h
 src/config/bitcoin-config.h.in
 src/config/stamp-h1
+src/univalue/gen
 share/setup.nsi
 share/qt/Info.plist
 
-src/univalue/gen
+*.pb.cc
+*.pb.h
+*.json.h
+*.raw.h
 
+# ------------------------------------------------------------
+# Qt build outputs and UI files
+# ------------------------------------------------------------
 src/qt/*.moc
 src/qt/moc_*.cpp
 src/qt/forms/ui_*.h
+src/qt/test/moc_*.cpp
+qrc_*.cpp
 
-src/qt/test/moc*.cpp
+# ------------------------------------------------------------
+# Qt Creator / IDE project files
+# ------------------------------------------------------------
+src/qt/crionic-qt.config
+src/qt/crionic-qt.creator
+src/qt/crionic-qt.creator.user
+src/qt/crionic-qt.files
+src/qt/crionic-qt.includes
 
-src/qt/bitcoin-qt.config
-src/qt/bitcoin-qt.creator
-src/qt/bitcoin-qt.creator.user
-src/qt/bitcoin-qt.files
-src/qt/bitcoin-qt.includes
-
+# ------------------------------------------------------------
+# Object and library files
+# ------------------------------------------------------------
 .deps
 .dirstamp
 .libs
+*.o
+*.o-*
+*.a
+*.la
+*.lo
+*.qm
+
+# ------------------------------------------------------------
+# Temporary, patch, and backup files
+# ------------------------------------------------------------
 .*.swp
 *.*~*
 *.bak
 *.rej
 *.orig
-*.pyc
-*.o
-*.o-*
 *.patch
-*.a
-*.pb.cc
-*.pb.h
+*.pyc
 
+# ------------------------------------------------------------
+# Logs and test outputs
+# ------------------------------------------------------------
 *.log
 *.trs
 *.dmg
-
-*.json.h
-*.raw.h
-
-#libtool object files
-*.lo
-*.la
-
-# Compilation and Qt preprocessor part
-*.qm
-Makefile
-<<<<<<< HEAD
-crionic-qt
-crionic-Qt.app
-=======
-
-crionic-qt
-crionic-Qt.app
-
->>>>>>> crionic2/master
-background.tiff*
-
-# Unit-tests
 Makefile.test
-<<<<<<< HEAD
-crionic-qt_test
+test.txt
 
-=======
-
-=======
-crionic-qt_test
-
-
->>>>>>> crionic2/master
-# Resources cpp
-qrc_*.cpp
-# Mac specific
-.DS_Store
-build
-
-#lcov
+# ------------------------------------------------------------
+# Coverage and testing artifacts
+# ------------------------------------------------------------
 *.gcno
 *.gcda
 /*.info
-<<<<<<< HEAD
 test_crionic.coverage/
-=======
-
-test_crionic.coverage/
-
->>>>>>> crionic2/master
 total.coverage/
 coverage_percent.txt
 
-#build tests
-linux-coverage-build
-linux-build
-win32-build
+# ------------------------------------------------------------
+# Build directories
+# ------------------------------------------------------------
+build/
+linux-build/
+linux-coverage-build/
+win32-build/
+
+# ------------------------------------------------------------
+# Test configs and cache
+# ------------------------------------------------------------
 test/config.ini
+test/cache/
 test/cache/*
 
-!src/leveldb*/Makefile
-
+# ------------------------------------------------------------
+# Documentation
+# ------------------------------------------------------------
 /doc/doxygen/
 
-libbitcoinconsensus.pc
-contrib/devtools/split-debug.sh
-src/.vscode/
+# ------------------------------------------------------------
+# IDE and editor folders
+# ------------------------------------------------------------
 .vscode/
+src/.vscode/
+
+# ------------------------------------------------------------
+# Miscellaneous / scripts
+# ------------------------------------------------------------
+background.tiff*
 just*.sh
+build.sh
+cleanup.sh
+contrib/devtools/split-debug.sh
+
+# ------------------------------------------------------------
+# OS-specific
+# ------------------------------------------------------------
+.DS_Store
+
+# ------------------------------------------------------------
+# Exceptions (tracked Makefiles)
+# ------------------------------------------------------------
+!src/leveldb*/Makefile
+
+# Custom scripts (adjust as needed)
+build-m2.sh
+cleanup.sh

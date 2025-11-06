@@ -5,22 +5,23 @@
 
 #include <primitives/block.h>
 
+#include <chainparams.h>
+#include <crypto/common.h>
+#include <crypto/scrypt.h>
 #include <hash.h>
+#include <pow.h>
+#include <streams.h>
 #include <tinyformat.h>
 #include <utilstrencodings.h>
-#include <crypto/common.h>
 #include <yespower/yespower.h>
-#include <streams.h>
-#include <pow.h>
-#include <crypto/scrypt.h>
-#include <chainparams.h>
 
 uint256 CBlockHeader::GetHash() const
 {
     return SerializeHash(*this);
 }
 
-uint256 CBlockHeader::GetPoWHash() const // Removed the " if fork then pow is sha256 " so always scrypt now !
+uint256 CBlockHeader::GetPoWHash() const
+
 {
     uint256 thash;
     scrypt_1024_1_1_256(BEGIN(nVersion), BEGIN(thash));
@@ -36,21 +37,18 @@ uint256 CBlockHeader::GetHashYespower() const
         .version = YESPOWER_1_0,
         .N = 2048,
         .r = 32,
-        .pers = (const uint8_t *)"LTNCGYES",
-        .perslen = 8 
-    };
-    if (yespower_tls( (unsigned char *)&ss[0], ss.size(), &yespower_1_0_ltncgyes, (yespower_binary_t *)&thash) ) {
+        .pers = (const uint8_t*)"LTNCGYES",
+        .perslen = 8};
+    if (yespower_tls((unsigned char*)&ss[0], ss.size(), &yespower_1_0_ltncgyes, (yespower_binary_t*)&thash)) {
         abort();
     }
     return thash;
 }
 
-
-
 std::string CBlock::ToString() const
 {
     std::stringstream s;
-    // Crionic: Hive: Include type
+
     s << strprintf("CBlock(type=%s, hash=%s, powHash=%s, yespowerpow=%s, ver=0x%08x, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nNonce=%u, vtx=%u)\n",
         IsHiveMined(Params().GetConsensus()) ? "hive" : "pow",
         GetHash().ToString(),

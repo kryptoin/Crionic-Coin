@@ -7,41 +7,35 @@
 #include <qt/bitcoinaddressvalidator.h>
 #include <qt/guiconstants.h>
 
-QValidatedLineEdit::QValidatedLineEdit(QWidget *parent) :
-    QLineEdit(parent),
-    valid(true),
-    checkValidator(0)
+QValidatedLineEdit::QValidatedLineEdit(QWidget* parent) : QLineEdit(parent),
+                                                          valid(true),
+                                                          checkValidator(0)
 {
     connect(this, SIGNAL(textChanged(QString)), this, SLOT(markValid()));
 }
 
 void QValidatedLineEdit::setValid(bool _valid)
 {
-    if(_valid == this->valid)
-    {
+    if (_valid == this->valid) {
         return;
     }
 
-    if(_valid)
-    {
+    if (_valid) {
         setStyleSheet("");
-    }
-    else
-    {
+    } else {
         setStyleSheet(STYLE_INVALID);
     }
     this->valid = _valid;
 }
 
-void QValidatedLineEdit::focusInEvent(QFocusEvent *evt)
+void QValidatedLineEdit::focusInEvent(QFocusEvent* evt)
 {
-    // Clear invalid flag on focus
     setValid(true);
 
     QLineEdit::focusInEvent(evt);
 }
 
-void QValidatedLineEdit::focusOutEvent(QFocusEvent *evt)
+void QValidatedLineEdit::focusOutEvent(QFocusEvent* evt)
 {
     checkValidity();
 
@@ -50,7 +44,6 @@ void QValidatedLineEdit::focusOutEvent(QFocusEvent *evt)
 
 void QValidatedLineEdit::markValid()
 {
-    // As long as a user is typing ensure we display state as valid
     setValid(true);
 }
 
@@ -62,14 +55,9 @@ void QValidatedLineEdit::clear()
 
 void QValidatedLineEdit::setEnabled(bool enabled)
 {
-    if (!enabled)
-    {
-        // A disabled QValidatedLineEdit should be marked valid
+    if (!enabled) {
         setValid(true);
-    }
-    else
-    {
-        // Recheck validity when QValidatedLineEdit gets enabled
+    } else {
         checkValidity();
     }
 
@@ -78,17 +66,12 @@ void QValidatedLineEdit::setEnabled(bool enabled)
 
 void QValidatedLineEdit::checkValidity()
 {
-    if (text().isEmpty())
-    {
+    if (text().isEmpty()) {
         setValid(true);
-    }
-    else if (hasAcceptableInput())
-    {
+    } else if (hasAcceptableInput()) {
         setValid(true);
 
-        // Check contents on focus out
-        if (checkValidator)
-        {
+        if (checkValidator) {
             QString address = text();
             int pos = 0;
             if (checkValidator->validate(address, pos) == QValidator::Acceptable)
@@ -96,23 +79,20 @@ void QValidatedLineEdit::checkValidity()
             else
                 setValid(false);
         }
-    }
-    else
+    } else
         setValid(false);
 
     Q_EMIT validationDidChange(this);
 }
 
-void QValidatedLineEdit::setCheckValidator(const QValidator *v)
+void QValidatedLineEdit::setCheckValidator(const QValidator* v)
 {
     checkValidator = v;
 }
 
 bool QValidatedLineEdit::isValid()
 {
-    // use checkValidator in case the QValidatedLineEdit is disabled
-    if (checkValidator)
-    {
+    if (checkValidator) {
         QString address = text();
         int pos = 0;
         if (checkValidator->validate(address, pos) == QValidator::Acceptable)

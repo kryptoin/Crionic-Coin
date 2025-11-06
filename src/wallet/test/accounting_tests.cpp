@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+
 #include <wallet/wallet.h>
 
 #include <wallet/test/wallet_test_fixture.h>
@@ -13,15 +14,14 @@
 BOOST_FIXTURE_TEST_SUITE(accounting_tests, WalletTestingSetup)
 
 static void
-GetResults(CWallet *wallet, std::map<CAmount, CAccountingEntry>& results)
+GetResults(CWallet* wallet, std::map<CAmount, CAccountingEntry>& results)
 {
     std::list<CAccountingEntry> aes;
 
     results.clear();
     BOOST_CHECK(wallet->ReorderTransactions() == DB_LOAD_OK);
     wallet->ListAccountCreditDebit("", aes);
-    for (CAccountingEntry& ae : aes)
-    {
+    for (CAccountingEntry& ae : aes) {
         results[ae.nOrderPos] = ae;
     }
 }
@@ -62,7 +62,6 @@ BOOST_AUTO_TEST_CASE(acc_orderupgrade)
     BOOST_CHECK(results[2].nTime == 1333333336);
     BOOST_CHECK(results[2].strOtherAccount == "c");
 
-
     ae.nTime = 1333333330;
     ae.strOtherAccount = "d";
     ae.nOrderPos = pwalletMain->IncOrderPosNext();
@@ -78,11 +77,11 @@ BOOST_AUTO_TEST_CASE(acc_orderupgrade)
     BOOST_CHECK(results[3].nTime == 1333333330);
     BOOST_CHECK(results[3].strComment.empty());
 
-
     wtx.mapValue["comment"] = "y";
     {
         CMutableTransaction tx(*wtx.tx);
-        --tx.nLockTime;  // Just to change the hash :)
+        --tx.nLockTime;
+
         wtx.SetTx(MakeTransactionRef(std::move(tx)));
     }
     pwalletMain->AddToWallet(wtx);
@@ -92,7 +91,8 @@ BOOST_AUTO_TEST_CASE(acc_orderupgrade)
     wtx.mapValue["comment"] = "x";
     {
         CMutableTransaction tx(*wtx.tx);
-        --tx.nLockTime;  // Just to change the hash :)
+        --tx.nLockTime;
+
         wtx.SetTx(MakeTransactionRef(std::move(tx)));
     }
     pwalletMain->AddToWallet(wtx);
@@ -111,7 +111,6 @@ BOOST_AUTO_TEST_CASE(acc_orderupgrade)
     BOOST_CHECK(results[4].nTime == 1333333330);
     BOOST_CHECK(results[4].strComment.empty());
     BOOST_CHECK(5 == vpwtx[1]->nOrderPos);
-
 
     ae.nTime = 1333333334;
     ae.strOtherAccount = "e";

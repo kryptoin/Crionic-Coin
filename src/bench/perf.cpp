@@ -6,17 +6,14 @@
 
 #if defined(__i386__) || defined(__x86_64__)
 
-/* These architectures support querying the cycle counter
- * from user space, no need for any syscall overhead.
- */
-void perf_init(void) { }
-void perf_fini(void) { }
+void perf_init(void) {}
+void perf_fini(void) {}
 
 #elif defined(__linux__)
 
-#include <unistd.h>
-#include <sys/syscall.h>
 #include <linux/perf_event.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 static int fd = -1;
 static struct perf_event_attr attr;
@@ -44,10 +41,10 @@ uint64_t perf_cpucycles(void)
     return result;
 }
 
-#else /* Unhandled platform */
+#else
 
-void perf_init(void) { }
-void perf_fini(void) { }
+void perf_init(void) {}
+void perf_fini(void) {}
 uint64_t perf_cpucycles(void) { return 0; }
 
 #endif

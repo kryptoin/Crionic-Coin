@@ -4,15 +4,16 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <chain.h>
-#include <chainparams.h>    // Crionic: Hive
-#include <util.h>    // Crionic: Hive
-#include <rpc/blockchain.h>     // Crionic: Hive 1.1
-#include <validation.h>         // Crionic: Hive 1.1
+#include <chainparams.h>
 
-/**
- * CChain implementation
- */
-void CChain::SetTip(CBlockIndex *pindex) {
+#include <util.h>
+
+#include <rpc/blockchain.h>
+
+#include <validation.h>
+
+void CChain::SetTip(CBlockIndex* pindex)
+{
     if (pindex == nullptr) {
         vChain.clear();
         return;
@@ -24,7 +25,8 @@ void CChain::SetTip(CBlockIndex *pindex) {
     }
 }
 
-CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
+CBlockLocator CChain::GetLocator(const CBlockIndex* pindex) const
+{
     int nStep = 1;
     std::vector<uint256> vHave;
     vHave.reserve(32);
@@ -33,16 +35,14 @@ CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
         pindex = Tip();
     while (pindex) {
         vHave.push_back(pindex->GetBlockHash());
-        // Stop when we have added the genesis block.
+
         if (pindex->nHeight == 0)
             break;
-        // Exponentially larger steps back, plus the genesis block.
+
         int nHeight = std::max(pindex->nHeight - nStep, 0);
         if (Contains(pindex)) {
-            // Use O(1) CChain index if possible.
             pindex = (*this)[nHeight];
         } else {
-            // Otherwise, use O(log n) skiplist.
             pindex = pindex->GetAncestor(nHeight);
         }
         if (vHave.size() > 10)
@@ -52,7 +52,8 @@ CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
     return CBlockLocator(vHave);
 }
 
-const CBlockIndex *CChain::FindFork(const CBlockIndex *pindex) const {
+const CBlockIndex* CChain::FindFork(const CBlockIndex* pindex) const
+{
     if (pindex == nullptr) {
         return nullptr;
     }
@@ -70,17 +71,13 @@ CBlockIndex* CChain::FindEarliestAtLeast(int64_t nTime) const
     return (lower == vChain.end() ? nullptr : *lower);
 }
 
-/** Turn the lowest '1' bit in the binary representation of a number into a '0'. */
 int static inline InvertLowestOne(int n) { return n & (n - 1); }
 
-/** Compute what height to jump back to with the CBlockIndex::pskip pointer. */
-int static inline GetSkipHeight(int height) {
+int static inline GetSkipHeight(int height)
+{
     if (height < 2)
         return 0;
 
-    // Determine which height to jump back to. Any number strictly lower than height is acceptable,
-    // but the following expression seems to perform well in simulations (max 110 steps to go back
-    // up to 2**18 blocks).
     return (height & 1) ? InvertLowestOne(InvertLowestOne(height - 1)) + 1 : InvertLowestOne(height);
 }
 
@@ -97,9 +94,8 @@ const CBlockIndex* CBlockIndex::GetAncestor(int height) const
         int heightSkipPrev = GetSkipHeight(heightWalk - 1);
         if (pindexWalk->pskip != nullptr &&
             (heightSkip == height ||
-             (heightSkip > height && !(heightSkipPrev < heightSkip - 2 &&
-                                       heightSkipPrev >= height)))) {
-            // Only follow pskip if pprev->pskip isn't better than pskip->pprev.
+                (heightSkip > height && !(heightSkipPrev < heightSkip - 2 &&
+                                            heightSkipPrev >= height)))) {
             pindexWalk = pindexWalk->pskip;
             heightWalk = heightSkip;
         } else {
@@ -122,12 +118,10 @@ void CBlockIndex::BuildSkip()
         pskip = pprev->GetAncestor(GetSkipHeight(nHeight));
 }
 
-// Crionic: Hive: Grant hive-mined blocks bonus work value - they get the work value of
-// their own block plus that of the PoW block behind them
 arith_uint256 GetBlockProof(const CBlockIndex& block)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
- 
+
     arith_uint256 bnTarget;
     bool fNegative;
     bool fOverflow;
@@ -136,16 +130,11 @@ arith_uint256 GetBlockProof(const CBlockIndex& block)
     if (fNegative || fOverflow || bnTarget == 0)
         return 0;
 
-    // We need to compute 2**256 / (bnTarget+1), but we can't represent 2**256
-    // as it's too large for an arith_uint256. However, as 2**256 is at least as large
-    // as bnTarget+1, it is equal to ((2**256 - bnTarget - 1) / (bnTarget+1)) + 1,
-    // or ~bnTarget / (bnTarget+1) + 1.
     arith_uint256 bnTargetScaled = (~bnTarget / (bnTarget + 1)) + 1;
 
     if (block.GetBlockHeader().IsHiveMined(consensusParams)) {
         assert(block.pprev);
 
-        // Crionic: Hive 1.1: Set bnPreviousTarget from nBits in most recent pow block, not just assuming it's one back. Note this logic is still valid for Hive 1.0 so doesn't need to be gated.
         CBlockIndex* pindexTemp = block.pprev;
         while (pindexTemp->GetBlockHeader().IsHiveMined(consensusParams)) {
             assert(pindexTemp->pprev);
@@ -153,54 +142,38 @@ arith_uint256 GetBlockProof(const CBlockIndex& block)
         }
 
         arith_uint256 bnPreviousTarget;
-        // bnPreviousTarget.SetCompact(block.pprev->nBits, &fNegative, &fOverflow);
-        bnPreviousTarget.SetCompact(pindexTemp->nBits, &fNegative, &fOverflow); // Crionic: Hive 1.1: Set bnPreviousTarget from nBits in most recent pow block, not just assuming it's one back
+
+        bnPreviousTarget.SetCompact(pindexTemp->nBits, &fNegative, &fOverflow);
+
         if (fNegative || fOverflow || bnPreviousTarget == 0)
             return 0;
         bnTargetScaled += (~bnPreviousTarget / (bnPreviousTarget + 1)) + 1;
 
-        // Hive 1.1: Enable bonus chainwork for Hive blocks
         if ((IsHive11Enabled(&block, consensusParams)) && (!IsHive12Enabled(block.nHeight))) {
-           // LogPrintf("**** HIVE-1.1: ENABLING BONUS CHAINWORK ON HIVE BLOCK %s\n", block.GetBlockHash().ToString());
-           // LogPrintf("**** Initial block chainwork = %s\n", bnTargetScaled.ToString());
-            double hiveDiff = GetDifficulty(&block, true);                                  // Current hive diff
-          //  LogPrintf("**** Hive diff = %.12f\n", hiveDiff);
-            unsigned int k = floor(std::min(hiveDiff/consensusParams.maxHiveDiff, 1.0) * (consensusParams.maxK - consensusParams.minK) + consensusParams.minK);
+            double hiveDiff = GetDifficulty(&block, true);
+
+            unsigned int k = floor(std::min(hiveDiff / consensusParams.maxHiveDiff, 1.0) * (consensusParams.maxK - consensusParams.minK) + consensusParams.minK);
 
             bnTargetScaled *= k;
-
-          //  LogPrintf("**** k = %d\n", k);
-          //  LogPrintf("**** Final scaled chainwork =  %s\n", bnTargetScaled.ToString());
         }
 
-        // Hive 1.2: Enable bonus chainwork for Hive blocks
         if (IsHive12Enabled(block.nHeight)) {
-            //LogPrintf("**** HIVE-1.2: ENABLING BONUS CHAINWORK ON HIVE BLOCK %s\n", block.GetBlockHash().ToString());
-            //LogPrintf("**** Initial block chainwork = %s\n", bnTargetScaled.ToString());
-            double hiveDiff = GetDifficulty(&block, true);                                  // Current hive diff
-            //LogPrintf("**** Hive diff = %.12f\n", hiveDiff);
-            unsigned int k = floor(std::min(hiveDiff/consensusParams.maxHiveDiff2, 1.0) * (consensusParams.maxK2 - consensusParams.minK) + consensusParams.minK);
+            double hiveDiff = GetDifficulty(&block, true);
+
+            unsigned int k = floor(std::min(hiveDiff / consensusParams.maxHiveDiff2, 1.0) * (consensusParams.maxK2 - consensusParams.minK) + consensusParams.minK);
 
             bnTargetScaled *= k;
-
-            //LogPrintf("**** k = %d\n", k);
-            //LogPrintf("**** Final scaled chainwork =  %s\n", bnTargetScaled.ToString());
         }
 
-    // Hive 1.1 and 1.2: Enable bonus chainwork for PoW blocks
     } else if ((IsHive11Enabled(&block, consensusParams)) && (!IsHive12Enabled(block.nHeight))) {
-        //LogPrintf("**** HIVE-1.1: CHECKING FOR BONUS CHAINWORK ON POW BLOCK %s\n", block.GetBlockHash().ToString());
-        //LogPrintf("**** Initial block chainwork = %s\n", bnTargetScaled.ToString());
-
-        // Find last hive block
-        CBlockIndex *currBlock = block.pprev;
+        CBlockIndex* currBlock = block.pprev;
         int blocksSinceHive;
         double lastHiveDifficulty = 0;
 
         for (blocksSinceHive = 0; blocksSinceHive < consensusParams.maxKPow; blocksSinceHive++) {
             if (currBlock->GetBlockHeader().IsHiveMined(consensusParams)) {
                 lastHiveDifficulty = GetDifficulty(currBlock, true);
-                //LogPrintf("**** Got last Hive diff = %.12f, at %s\n", lastHiveDifficulty, currBlock->GetBlockHash().ToString());
+
                 break;
             }
 
@@ -208,9 +181,6 @@ arith_uint256 GetBlockProof(const CBlockIndex& block)
             currBlock = currBlock->pprev;
         }
 
-        //LogPrintf("**** Pow blocks since last Hive block = %d\n", blocksSinceHive);
-
-        // Apply k scaling
         unsigned int k = consensusParams.maxKPow - blocksSinceHive;
         if (lastHiveDifficulty < consensusParams.powSplit1)
             k = k >> 1;
@@ -222,22 +192,15 @@ arith_uint256 GetBlockProof(const CBlockIndex& block)
 
         bnTargetScaled *= k;
 
-        //LogPrintf("**** k = %d\n", k);
-        //LogPrintf("**** Final scaled chainwork =  %s\n", bnTargetScaled.ToString());
-
     } else if (IsHive12Enabled(block.nHeight)) {
-        //LogPrintf("**** HIVE-1.2: CHECKING FOR BONUS CHAINWORK ON POW BLOCK %s\n", block.GetBlockHash().ToString());
-        //LogPrintf("**** Initial block chainwork = %s\n", bnTargetScaled.ToString());
-
-        // Find last hive block
-        CBlockIndex *currBlock = block.pprev;
+        CBlockIndex* currBlock = block.pprev;
         int blocksSinceHive;
         double lastHiveDifficulty = 0;
 
         for (blocksSinceHive = 0; blocksSinceHive < consensusParams.maxKPow; blocksSinceHive++) {
             if (currBlock->GetBlockHeader().IsHiveMined(consensusParams)) {
                 lastHiveDifficulty = GetDifficulty(currBlock, true);
-                //LogPrintf("**** Got last Hive diff = %.12f, at %s\n", lastHiveDifficulty, currBlock->GetBlockHash().ToString());
+
                 break;
             }
 
@@ -245,9 +208,6 @@ arith_uint256 GetBlockProof(const CBlockIndex& block)
             currBlock = currBlock->pprev;
         }
 
-        //LogPrintf("**** Pow blocks since last Hive block = %d\n", blocksSinceHive);
-
-        // Apply k scaling
         unsigned int k = consensusParams.maxKPow - blocksSinceHive;
         if (lastHiveDifficulty < consensusParams.powSplit12)
             k = k >> 1;
@@ -258,15 +218,11 @@ arith_uint256 GetBlockProof(const CBlockIndex& block)
             k = 1;
 
         bnTargetScaled *= k;
-
-        //LogPrintf("**** k = %d\n", k);
-        //LogPrintf("**** Final scaled chainwork =  %s\n", bnTargetScaled.ToString());
     }
 
     return bnTargetScaled;
 }
 
-// LitecoinCash: Hive: Use this to compute estimated hashes for GetNetworkHashPS()
 arith_uint256 GetNumHashes(const CBlockIndex& block)
 {
     arith_uint256 bnTarget;
@@ -277,14 +233,8 @@ arith_uint256 GetNumHashes(const CBlockIndex& block)
     if (fNegative || fOverflow || bnTarget == 0 || block.GetBlockHeader().IsHiveMined(Params().GetConsensus()))
         return 0;
 
-    // We need to compute 2**256 / (bnTarget+1), but we can't represent 2**256
-    // as it's too large for an arith_uint256. However, as 2**256 is at least as large
-    // as bnTarget+1, it is equal to ((2**256 - bnTarget - 1) / (bnTarget+1)) + 1,
-    // or ~bnTarget / (bnTarget+1) + 1.
     return (~bnTarget / (bnTarget + 1)) + 1;
 }
-
-
 
 int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& from, const CBlockIndex& tip, const Consensus::Params& params)
 {
@@ -303,9 +253,8 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
     return sign * r.GetLow64();
 }
 
-/** Find the last common ancestor two blocks have.
- *  Both pa and pb must be non-nullptr. */
-const CBlockIndex* LastCommonAncestor(const CBlockIndex* pa, const CBlockIndex* pb) {
+const CBlockIndex* LastCommonAncestor(const CBlockIndex* pa, const CBlockIndex* pb)
+{
     if (pa->nHeight > pb->nHeight) {
         pa = pa->GetAncestor(pb->nHeight);
     } else if (pb->nHeight > pa->nHeight) {
@@ -317,7 +266,6 @@ const CBlockIndex* LastCommonAncestor(const CBlockIndex* pa, const CBlockIndex* 
         pb = pb->pprev;
     }
 
-    // Eventually all chain branches meet at the genesis block.
     assert(pa == pb);
     return pa;
 }

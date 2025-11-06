@@ -13,59 +13,64 @@
 #include <util.h>
 #include <validation.h>
 
-#include <list>
 #include <atomic>
 #include <future>
+#include <list>
 
 #include <boost/signals2/signal.hpp>
 
-struct MainSignalsInstance {
-    boost::signals2::signal<void (const CBlockIndex *, const CBlockIndex *, bool fInitialDownload)> UpdatedBlockTip;
-    boost::signals2::signal<void (const CTransactionRef &)> TransactionAddedToMempool;
-    boost::signals2::signal<void (const std::shared_ptr<const CBlock> &, const CBlockIndex *pindex, const std::vector<CTransactionRef>&)> BlockConnected;
-    boost::signals2::signal<void (const std::shared_ptr<const CBlock> &)> BlockDisconnected;
-    boost::signals2::signal<void (const CTransactionRef &)> TransactionRemovedFromMempool;
-    boost::signals2::signal<void (const CBlockLocator &)> SetBestChain;
-    boost::signals2::signal<void (const uint256 &)> Inventory;
-    boost::signals2::signal<void (int64_t nBestBlockTime, CConnman* connman)> Broadcast;
-    boost::signals2::signal<void (const CBlock&, const CValidationState&)> BlockChecked;
-    boost::signals2::signal<void (const CBlockIndex *, const std::shared_ptr<const CBlock>&)> NewPoWValidBlock;
+using namespace boost::placeholders;
 
-    // We are not allowed to assume the scheduler only runs in one thread,
-    // but must ensure all callbacks happen in-order, so we end up creating
-    // our own queue here :(
+struct MainSignalsInstance {
+    boost::signals2::signal<void(const CBlockIndex*, const CBlockIndex*, bool fInitialDownload)> UpdatedBlockTip;
+    boost::signals2::signal<void(const CTransactionRef&)> TransactionAddedToMempool;
+    boost::signals2::signal<void(const std::shared_ptr<const CBlock>&, const CBlockIndex* pindex, const std::vector<CTransactionRef>&)> BlockConnected;
+    boost::signals2::signal<void(const std::shared_ptr<const CBlock>&)> BlockDisconnected;
+    boost::signals2::signal<void(const CTransactionRef&)> TransactionRemovedFromMempool;
+    boost::signals2::signal<void(const CBlockLocator&)> SetBestChain;
+    boost::signals2::signal<void(const uint256&)> Inventory;
+    boost::signals2::signal<void(int64_t nBestBlockTime, CConnman* connman)> Broadcast;
+    boost::signals2::signal<void(const CBlock&, const CValidationState&)> BlockChecked;
+    boost::signals2::signal<void(const CBlockIndex*, const std::shared_ptr<const CBlock>&)> NewPoWValidBlock;
+
     SingleThreadedSchedulerClient m_schedulerClient;
 
-    explicit MainSignalsInstance(CScheduler *pscheduler) : m_schedulerClient(pscheduler) {}
+    explicit MainSignalsInstance(CScheduler* pscheduler) : m_schedulerClient(pscheduler) {}
 };
 
 static CMainSignals g_signals;
 
-void CMainSignals::RegisterBackgroundSignalScheduler(CScheduler& scheduler) {
+void CMainSignals::RegisterBackgroundSignalScheduler(CScheduler& scheduler)
+{
     assert(!m_internals);
     m_internals.reset(new MainSignalsInstance(&scheduler));
 }
 
-void CMainSignals::UnregisterBackgroundSignalScheduler() {
+void CMainSignals::UnregisterBackgroundSignalScheduler()
+{
     m_internals.reset(nullptr);
 }
 
-void CMainSignals::FlushBackgroundCallbacks() {
+void CMainSignals::FlushBackgroundCallbacks()
+{
     if (m_internals) {
         m_internals->m_schedulerClient.EmptyQueue();
     }
 }
 
-size_t CMainSignals::CallbacksPending() {
+size_t CMainSignals::CallbacksPending()
+{
     if (!m_internals) return 0;
     return m_internals->m_schedulerClient.CallbacksPending();
 }
 
-void CMainSignals::RegisterWithMempoolSignals(CTxMemPool& pool) {
+void CMainSignals::RegisterWithMempoolSignals(CTxMemPool& pool)
+{
     pool.NotifyEntryRemoved.connect(boost::bind(&CMainSignals::MempoolEntryRemoved, this, _1, _2));
 }
 
-void CMainSignals::UnregisterWithMempoolSignals(CTxMemPool& pool) {
+void CMainSignals::UnregisterWithMempoolSignals(CTxMemPool& pool)
+{
     pool.NotifyEntryRemoved.disconnect(boost::bind(&CMainSignals::MempoolEntryRemoved, this, _1, _2));
 }
 
@@ -74,7 +79,8 @@ CMainSignals& GetMainSignals()
     return g_signals;
 }
 
-void RegisterValidationInterface(CValidationInterface* pwalletIn) {
+void RegisterValidationInterface(CValidationInterface* pwalletIn)
+{
     g_signals.m_internals->UpdatedBlockTip.connect(boost::bind(&CValidationInterface::UpdatedBlockTip, pwalletIn, _1, _2, _3));
     g_signals.m_internals->TransactionAddedToMempool.connect(boost::bind(&CValidationInterface::TransactionAddedToMempool, pwalletIn, _1));
     g_signals.m_internals->BlockConnected.connect(boost::bind(&CValidationInterface::BlockConnected, pwalletIn, _1, _2, _3));
@@ -87,7 +93,8 @@ void RegisterValidationInterface(CValidationInterface* pwalletIn) {
     g_signals.m_internals->NewPoWValidBlock.connect(boost::bind(&CValidationInterface::NewPoWValidBlock, pwalletIn, _1, _2));
 }
 
-void UnregisterValidationInterface(CValidationInterface* pwalletIn) {
+void UnregisterValidationInterface(CValidationInterface* pwalletIn)
+{
     g_signals.m_internals->BlockChecked.disconnect(boost::bind(&CValidationInterface::BlockChecked, pwalletIn, _1, _2));
     g_signals.m_internals->Broadcast.disconnect(boost::bind(&CValidationInterface::ResendWalletTransactions, pwalletIn, _1, _2));
     g_signals.m_internals->Inventory.disconnect(boost::bind(&CValidationInterface::Inventory, pwalletIn, _1));
@@ -100,7 +107,8 @@ void UnregisterValidationInterface(CValidationInterface* pwalletIn) {
     g_signals.m_internals->NewPoWValidBlock.disconnect(boost::bind(&CValidationInterface::NewPoWValidBlock, pwalletIn, _1, _2));
 }
 
-void UnregisterAllValidationInterfaces() {
+void UnregisterAllValidationInterfaces()
+{
     if (!g_signals.m_internals) {
         return;
     }
@@ -116,13 +124,15 @@ void UnregisterAllValidationInterfaces() {
     g_signals.m_internals->NewPoWValidBlock.disconnect_all_slots();
 }
 
-void CallFunctionInValidationInterfaceQueue(std::function<void ()> func) {
+void CallFunctionInValidationInterfaceQueue(std::function<void()> func)
+{
     g_signals.m_internals->m_schedulerClient.AddToProcessQueue(std::move(func));
 }
 
-void SyncWithValidationInterfaceQueue() {
+void SyncWithValidationInterfaceQueue()
+{
     AssertLockNotHeld(cs_main);
-    // Block until the validation queue drains
+
     std::promise<void> promise;
     CallFunctionInValidationInterfaceQueue([&promise] {
         promise.set_value();
@@ -130,7 +140,8 @@ void SyncWithValidationInterfaceQueue() {
     promise.get_future().wait();
 }
 
-void CMainSignals::MempoolEntryRemoved(CTransactionRef ptx, MemPoolRemovalReason reason) {
+void CMainSignals::MempoolEntryRemoved(CTransactionRef ptx, MemPoolRemovalReason reason)
+{
     if (reason != MemPoolRemovalReason::BLOCK && reason != MemPoolRemovalReason::CONFLICT) {
         m_internals->m_schedulerClient.AddToProcessQueue([ptx, this] {
             m_internals->TransactionRemovedFromMempool(ptx);
@@ -138,50 +149,59 @@ void CMainSignals::MempoolEntryRemoved(CTransactionRef ptx, MemPoolRemovalReason
     }
 }
 
-void CMainSignals::UpdatedBlockTip(const CBlockIndex *pindexNew, const CBlockIndex *pindexFork, bool fInitialDownload) {
+void CMainSignals::UpdatedBlockTip(const CBlockIndex* pindexNew, const CBlockIndex* pindexFork, bool fInitialDownload)
+{
     m_internals->m_schedulerClient.AddToProcessQueue([pindexNew, pindexFork, fInitialDownload, this] {
         m_internals->UpdatedBlockTip(pindexNew, pindexFork, fInitialDownload);
     });
 }
 
-void CMainSignals::TransactionAddedToMempool(const CTransactionRef &ptx) {
+void CMainSignals::TransactionAddedToMempool(const CTransactionRef& ptx)
+{
     m_internals->m_schedulerClient.AddToProcessQueue([ptx, this] {
         m_internals->TransactionAddedToMempool(ptx);
     });
 }
 
-void CMainSignals::BlockConnected(const std::shared_ptr<const CBlock> &pblock, const CBlockIndex *pindex, const std::shared_ptr<const std::vector<CTransactionRef>>& pvtxConflicted) {
+void CMainSignals::BlockConnected(const std::shared_ptr<const CBlock>& pblock, const CBlockIndex* pindex, const std::shared_ptr<const std::vector<CTransactionRef>>& pvtxConflicted)
+{
     m_internals->m_schedulerClient.AddToProcessQueue([pblock, pindex, pvtxConflicted, this] {
         m_internals->BlockConnected(pblock, pindex, *pvtxConflicted);
     });
 }
 
-void CMainSignals::BlockDisconnected(const std::shared_ptr<const CBlock> &pblock) {
+void CMainSignals::BlockDisconnected(const std::shared_ptr<const CBlock>& pblock)
+{
     m_internals->m_schedulerClient.AddToProcessQueue([pblock, this] {
         m_internals->BlockDisconnected(pblock);
     });
 }
 
-void CMainSignals::SetBestChain(const CBlockLocator &locator) {
+void CMainSignals::SetBestChain(const CBlockLocator& locator)
+{
     m_internals->m_schedulerClient.AddToProcessQueue([locator, this] {
         m_internals->SetBestChain(locator);
     });
 }
 
-void CMainSignals::Inventory(const uint256 &hash) {
+void CMainSignals::Inventory(const uint256& hash)
+{
     m_internals->m_schedulerClient.AddToProcessQueue([hash, this] {
         m_internals->Inventory(hash);
     });
 }
 
-void CMainSignals::Broadcast(int64_t nBestBlockTime, CConnman* connman) {
+void CMainSignals::Broadcast(int64_t nBestBlockTime, CConnman* connman)
+{
     m_internals->Broadcast(nBestBlockTime, connman);
 }
 
-void CMainSignals::BlockChecked(const CBlock& block, const CValidationState& state) {
+void CMainSignals::BlockChecked(const CBlock& block, const CValidationState& state)
+{
     m_internals->BlockChecked(block, state);
 }
 
-void CMainSignals::NewPoWValidBlock(const CBlockIndex *pindex, const std::shared_ptr<const CBlock> &block) {
+void CMainSignals::NewPoWValidBlock(const CBlockIndex* pindex, const std::shared_ptr<const CBlock>& block)
+{
     m_internals->NewPoWValidBlock(pindex, block);
 }

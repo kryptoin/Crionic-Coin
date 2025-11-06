@@ -12,4 +12,4 @@ private Q_SLOTS:
     void walletTests();
 };
 
-#endif // BITCOIN_QT_TEST_WALLETTESTS_H
+#endif

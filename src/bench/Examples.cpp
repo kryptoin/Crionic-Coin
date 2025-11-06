@@ -3,11 +3,9 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <bench/bench.h>
-#include <validation.h>
 #include <utiltime.h>
+#include <validation.h>
 
-// Sanity test: this should loop ten times, and
-// min/max/average should be close to 100ms.
 static void Sleep100ms(benchmark::State& state)
 {
     while (state.KeepRunning()) {
@@ -17,10 +15,9 @@ static void Sleep100ms(benchmark::State& state)
 
 BENCHMARK(Sleep100ms, 10);
 
-// Extremely fast-running benchmark:
 #include <math.h>
 
-volatile double sum = 0.0; // volatile, global so not optimized away
+volatile double sum = 0.0;
 
 static void Trig(benchmark::State& state)
 {

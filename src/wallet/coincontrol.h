@@ -12,27 +12,25 @@
 
 #include <boost/optional.hpp>
 
-/** Coin Control Features. */
 class CCoinControl
 {
 public:
-    //! Custom change destination, if not set an address is generated
     CTxDestination destChange;
-    //! Custom change type, ignored if destChange is set, defaults to g_change_type
+
     OutputType change_type;
-    //! If false, allows unselected inputs, but requires all selected inputs be used
+
     bool fAllowOtherInputs;
-    //! Includes watch only addresses which match the ISMINE_WATCH_SOLVABLE criteria
+
     bool fAllowWatchOnly;
-    //! Override automatic min/max checks on fee, m_feerate must be set if true
+
     bool fOverrideFeeRate;
-    //! Override the default payTxFee if set
+
     boost::optional<CFeeRate> m_feerate;
-    //! Override the default confirmation target if set
+
     boost::optional<unsigned int> m_confirm_target;
-    //! Signal BIP-125 replace by fee.
+
     bool signalRbf;
-    //! Fee estimation mode to control arguments to estimateSmartFee
+
     FeeEstimateMode m_fee_mode;
 
     CCoinControl()
@@ -88,4 +86,4 @@ private:
     std::set<COutPoint> setSelected;
 };
 
-#endif // BITCOIN_WALLET_COINCONTROL_H
+#endif

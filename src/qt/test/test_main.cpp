@@ -2,15 +2,16 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+
 #if defined(HAVE_CONFIG_H)
 #include <config/bitcoin-config.h>
 #endif
 
 #include <chainparams.h>
-#include <qt/test/rpcnestedtests.h>
-#include <util.h>
-#include <qt/test/uritests.h>
 #include <qt/test/compattests.h>
+#include <qt/test/rpcnestedtests.h>
+#include <qt/test/uritests.h>
+#include <util.h>
 
 #ifdef ENABLE_WALLET
 #include <qt/test/paymentservertests.h>
@@ -46,8 +47,7 @@ Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin);
 
 extern void noui_connect();
 
-// This is all you need to run all the tests
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     SetupEnvironment();
     SetupNetworking();
@@ -60,17 +60,14 @@ int main(int argc, char *argv[])
 
     bool fInvalid = false;
 
-    // Prefer the "minimal" platform for the test instead of the normal default
-    // platform ("xcb", "windows", or "cocoa") so tests can't unintentionally
-    // interfere with any background GUIs and don't require extra resources.
-    #if defined(WIN32)
-        _putenv_s("QT_QPA_PLATFORM", "minimal");
-    #else
-        setenv("QT_QPA_PLATFORM", "minimal", 0);
-    #endif
 
-    // Don't remove this, it's needed to access
-    // QApplication:: and QCoreApplication:: in the tests
+#if defined(WIN32)
+    _putenv_s("QT_QPA_PLATFORM", "minimal");
+#else
+    setenv("QT_QPA_PLATFORM", "minimal", 0);
+#endif
+
+
     QApplication app(argc, argv);
     app.setApplicationName("Crionic-Qt-test");
 

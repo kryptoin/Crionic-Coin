@@ -12,7 +12,6 @@
 #include <sys/select.h>
 #endif
 
-// Prior to GLIBC_2.14, memcpy was aliased to memmove.
 extern "C" void* memmove(void* a, const void* b, size_t c);
 extern "C" void* memcpy(void* a, const void* b, size_t c)
 {

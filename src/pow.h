@@ -31,22 +31,25 @@ extern int switchHmem;
 extern int switchLmem;
 extern int threshold;
 
-
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params&);
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader* pblock, const Consensus::Params&);
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params&);
-unsigned int GetNextHiveWorkRequired(const CBlockIndex* pindexLast, const Consensus::Params& params);                       // Crionic: Hive: Get the current Bee Hash Target
-bool CheckHiveProof(const CBlock* pblock, const Consensus::Params& params);                                                 // Crionic: Hive: Check the hive proof for given block
-bool CheckHiveProof2(const CBlock* pblock, const Consensus::Params& params);                                                 // Crionic: Hive: Check the hive proof for given block
-bool CheckHiveProof3(const CBlock* pblock, const Consensus::Params& params);                                                 // Crionic: Hive: Check the hive proof for given block
-bool GetNetworkHiveInfo(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false); // Crionic: Hive: Get count of all live and gestating BCTs on the network
-bool GetNetworkHiveInfo2(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false); // Crionic: Hive: Get count of all live and gestating BCTs on the network
-bool GetNetworkHiveInfo3(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false); // Crionic: Hive: Get count of all live and gestating BCTs on the network
-bool GetNetworkHiveInfo4(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false); // Crionic: Hive: Get count of all live and gestating BCTs on the network
+unsigned int GetNextHiveWorkRequired(const CBlockIndex* pindexLast, const Consensus::Params& params);
 
-/** Check whether a block hash satisfies the proof-of-work requirement specified by nBits */
+bool CheckHiveProof(const CBlock* pblock, const Consensus::Params& params);
+
+bool CheckHiveProof2(const CBlock* pblock, const Consensus::Params& params);
+
+bool CheckHiveProof3(const CBlock* pblock, const Consensus::Params& params);
+
+bool GetNetworkHiveInfo(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false);
+
+bool GetNetworkHiveInfo2(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false);
+
+bool GetNetworkHiveInfo3(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false);
+
+bool GetNetworkHiveInfo4(int& immatureBees, int& immatureBCTs, int& matureBees, int& matureBCTs, CAmount& potentialLifespanRewards, const Consensus::Params& consensusParams, bool recalcGraph = false);
+
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&);
 bool CheckProofOfWork2(uint256 hash, unsigned int nBits, const Consensus::Params&);
 
-
-
-#endif // BITCOIN_POW_H
+#endif

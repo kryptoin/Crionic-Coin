@@ -9,9 +9,11 @@
 #include <qt/bitcoingui.h>
 #include <qt/clientmodel.h>
 #include <qt/guiutil.h>
+#include <qt/hivedialog.h>
 #include <qt/optionsmodel.h>
 #include <qt/overviewpage.h>
-#include <qt/hivedialog.h>      // Crionic: Hive page
+
+#include <boost/thread.hpp>
 #include <qt/platformstyle.h>
 #include <qt/receivecoinsdialog.h>
 #include <qt/sendcoinsdialog.h>
@@ -19,10 +21,12 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
-#include <boost/thread.hpp>     // Crionic: Key import helper
-#include <wallet/rpcwallet.h>   // Crionic: Key import helper
-#include <wallet/wallet.h>      // Crionic: Key import helper
-#include <validation.h>         // Crionic: Key import helper
+
+#include <wallet/rpcwallet.h>
+
+#include <wallet/wallet.h>
+
+#include <validation.h>
 
 #include <ui_interface.h>
 
@@ -30,29 +34,27 @@
 #include <QActionGroup>
 #include <QFileDialog>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <QInputDialog>         // Crionic: Key import helper
 
-#include <util.h> // to see if its ok...
+#include <util.h>
 
-WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
-    QStackedWidget(parent),
-    clientModel(0),
-    walletModel(0),
-    platformStyle(_platformStyle)
+WalletView::WalletView(const PlatformStyle* _platformStyle, QWidget* parent) : QStackedWidget(parent),
+                                                                               clientModel(0),
+                                                                               walletModel(0),
+                                                                               platformStyle(_platformStyle)
 {
-    // Create tabs
     overviewPage = new OverviewPage(platformStyle);
-    hivePage = new HiveDialog(platformStyle); // Crionic: Hive page
+    hivePage = new HiveDialog(platformStyle);
 
     transactionsPage = new QWidget(this);
-    QVBoxLayout *vbox = new QVBoxLayout();
-    QHBoxLayout *hbox_buttons = new QHBoxLayout();
+    QVBoxLayout* vbox = new QVBoxLayout();
+    QHBoxLayout* hbox_buttons = new QHBoxLayout();
     transactionView = new TransactionView(platformStyle, this);
     vbox->addWidget(transactionView);
-    QPushButton *exportButton = new QPushButton(tr("&Export"), this);
+    QPushButton* exportButton = new QPushButton(tr("&Export"), this);
     exportButton->setToolTip(tr("Export the data in the current tab to a file"));
     if (platformStyle->getImagesOnButtons()) {
         exportButton->setIcon(platformStyle->SingleColorIcon(":/icons/export"));
@@ -72,111 +74,90 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
     addWidget(transactionsPage);
     addWidget(receiveCoinsPage);
     addWidget(sendCoinsPage);
-    addWidget(hivePage);   // Crionic: Hive page
+    addWidget(hivePage);
 
-    // Clicking on a transaction on the overview pre-selects the transaction on the transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), transactionView, SLOT(focusTransaction(QModelIndex)));
     connect(overviewPage, SIGNAL(outOfSyncWarningClicked()), this, SLOT(requestedSyncWarningInfo()));
 
-    // Double-clicking on a transaction on the transaction history page shows details
     connect(transactionView, SIGNAL(doubleClicked(QModelIndex)), transactionView, SLOT(showDetails()));
 
-    // Clicking on "Export" allows to export the transaction list
     connect(exportButton, SIGNAL(clicked()), transactionView, SLOT(exportClicked()));
 
-    // Pass through messages from sendCoinsPage
-    connect(sendCoinsPage, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
-    // Pass through messages from transactionView
-    connect(transactionView, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
+    connect(sendCoinsPage, SIGNAL(message(QString, QString, unsigned int)), this, SIGNAL(message(QString, QString, unsigned int)));
+
+    connect(transactionView, SIGNAL(message(QString, QString, unsigned int)), this, SIGNAL(message(QString, QString, unsigned int)));
 }
 
 WalletView::~WalletView()
 {
 }
 
-void WalletView::setBitcoinGUI(BitcoinGUI *gui)
+void WalletView::setBitcoinGUI(BitcoinGUI* gui)
 {
-    if (gui)
-    {
-        // Clicking on a transaction on the overview page simply sends you to transaction history page
+    if (gui) {
         connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), gui, SLOT(gotoHistoryPage()));
 
-        // Crionic: Go to hive page if bee button on overview clicked
         connect(overviewPage, SIGNAL(beeButtonClicked()), gui, SLOT(gotoHivePage()));
 
-        // Receive and report messages
-        connect(this, SIGNAL(message(QString,QString,unsigned int)), gui, SLOT(message(QString,QString,unsigned int)));
+        connect(this, SIGNAL(message(QString, QString, unsigned int)), gui, SLOT(message(QString, QString, unsigned int)));
 
-        // Pass through encryption status changed signals
         connect(this, SIGNAL(encryptionStatusChanged(int)), gui, SLOT(setEncryptionStatus(int)));
 
-        // Pass through transaction notifications
-        connect(this, SIGNAL(incomingTransaction(QString,int,CAmount,QString,QString,QString)), gui, SLOT(incomingTransaction(QString,int,CAmount,QString,QString,QString)));
+        connect(this, SIGNAL(incomingTransaction(QString, int, CAmount, QString, QString, QString)), gui, SLOT(incomingTransaction(QString, int, CAmount, QString, QString, QString)));
 
-        // Connect HD enabled state signal 
         connect(this, SIGNAL(hdEnabledStatusChanged(int)), gui, SLOT(setHDStatus(int)));
 
-        // Crionic: Hive: Connect hive status update signal
         connect(hivePage, SIGNAL(hiveStatusIconChanged(QString, QString)), gui, SLOT(updateHiveStatusIcon(QString, QString)));
     }
 }
 
-void WalletView::setClientModel(ClientModel *_clientModel)
+void WalletView::setClientModel(ClientModel* _clientModel)
 {
     this->clientModel = _clientModel;
 
     overviewPage->setClientModel(_clientModel);
     sendCoinsPage->setClientModel(_clientModel);
-    hivePage->setClientModel(_clientModel); // Crionic: Hive page
+    hivePage->setClientModel(_clientModel);
 }
 
-void WalletView::setWalletModel(WalletModel *_walletModel)
+void WalletView::setWalletModel(WalletModel* _walletModel)
 {
     this->walletModel = _walletModel;
 
-    // Put transaction list in tabs
     transactionView->setModel(_walletModel);
     overviewPage->setWalletModel(_walletModel);
-    hivePage->setModel(_walletModel);         // Crionic: Hive page
+    hivePage->setModel(_walletModel);
+
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
     usedSendingAddressesPage->setModel(_walletModel ? _walletModel->getAddressTableModel() : nullptr);
 
-    if (_walletModel)
-    {
-        // Receive and pass through messages from wallet model
-        connect(_walletModel, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
+    if (_walletModel) {
+        connect(_walletModel, SIGNAL(message(QString, QString, unsigned int)), this, SIGNAL(message(QString, QString, unsigned int)));
 
-        // Handle changes in encryption status
         connect(_walletModel, SIGNAL(encryptionStatusChanged(int)), this, SIGNAL(encryptionStatusChanged(int)));
         updateEncryptionStatus();
 
-        // update HD status
         Q_EMIT hdEnabledStatusChanged(_walletModel->hdEnabled());
 
-        // Balloon pop-up for new transaction
-        connect(_walletModel->getTransactionTableModel(), SIGNAL(rowsInserted(QModelIndex,int,int)),
-                this, SLOT(processNewTransaction(QModelIndex,int,int)));
+        connect(_walletModel->getTransactionTableModel(), SIGNAL(rowsInserted(QModelIndex, int, int)),
+            this, SLOT(processNewTransaction(QModelIndex, int, int)));
 
-        // Ask for passphrase if needed
         connect(_walletModel, SIGNAL(requireUnlock()), this, SLOT(unlockWallet()));
-		
-		// Crionic: Hive: Ask for passphrase if needed hive only
+
         connect(_walletModel, SIGNAL(requireUnlockHive()), this, SLOT(unlockWalletHive()));
 
-        // Show progress dialog
-        connect(_walletModel, SIGNAL(showProgress(QString,int)), this, SLOT(showProgress(QString,int)));
+        connect(_walletModel, SIGNAL(showProgress(QString, int)), this, SLOT(showProgress(QString, int)));
     }
 }
 
-void WalletView::processNewTransaction(const QModelIndex& parent, int start, int /*end*/)
+void WalletView::processNewTransaction(const QModelIndex& parent, int start, int)
 {
-    // Prevent balloon-spam when initial block download is in progress
     if (!walletModel || !clientModel || clientModel->inInitialBlockDownload())
         return;
 
-    TransactionTableModel *ttm = walletModel->getTransactionTableModel();
+    TransactionTableModel* ttm = walletModel->getTransactionTableModel();
     if (!ttm || ttm->processingQueuedTransactions())
         return;
 
@@ -195,25 +176,20 @@ void WalletView::gotoOverviewPage()
     setCurrentWidget(overviewPage);
 }
 
-// Crionic: Hive page
 void WalletView::gotoHivePage()
 {
     if ((chainActive.Tip()->nHeight) >= nSpeedFork)
-	hivePage->updateData3();
+        hivePage->updateData3();
 
     if ((Params().GetConsensus().variableBeecost) && (((chainActive.Tip()->nHeight) - 1) >= (Params().GetConsensus().variableForkBlock)) && (((chainActive.Tip()->nHeight) - 1) >= (Params().GetConsensus().remvariableForkBlock)) && ((chainActive.Tip()->nHeight) < nSpeedFork)) {
-	    //LogPrintf("OK \n");
-	    hivePage->updateData3();
+        hivePage->updateData3();
     }
     if ((Params().GetConsensus().variableBeecost) && (((chainActive.Tip()->nHeight) - 1) >= (Params().GetConsensus().variableForkBlock)) && (((chainActive.Tip()->nHeight) - 1) < (Params().GetConsensus().remvariableForkBlock)) && ((chainActive.Tip()->nHeight) < nSpeedFork)) {
-	    //LogPrintf("OK \n");
-	    hivePage->updateData2();
+        hivePage->updateData2();
     }
     if ((Params().GetConsensus().variableBeecost) && (((chainActive.Tip()->nHeight) - 1) < (Params().GetConsensus().variableForkBlock)) && ((chainActive.Tip()->nHeight) < nSpeedFork)) {
-	    //LogPrintf("NOT OK \n");
-	    hivePage->updateData();
+        hivePage->updateData();
     }
-
 
     setCurrentWidget(hivePage);
 }
@@ -238,8 +214,7 @@ void WalletView::gotoSendCoinsPage(QString addr)
 
 void WalletView::gotoSignMessageTab(QString addr)
 {
-    // calls show() in showTab_SM()
-    SignVerifyMessageDialog *signVerifyMessageDialog = new SignVerifyMessageDialog(platformStyle, this);
+    SignVerifyMessageDialog* signVerifyMessageDialog = new SignVerifyMessageDialog(platformStyle, this);
     signVerifyMessageDialog->setAttribute(Qt::WA_DeleteOnClose);
     signVerifyMessageDialog->setModel(walletModel);
     signVerifyMessageDialog->showTab_SM(true);
@@ -250,8 +225,7 @@ void WalletView::gotoSignMessageTab(QString addr)
 
 void WalletView::gotoVerifyMessageTab(QString addr)
 {
-    // calls show() in showTab_VM()
-    SignVerifyMessageDialog *signVerifyMessageDialog = new SignVerifyMessageDialog(platformStyle, this);
+    SignVerifyMessageDialog* signVerifyMessageDialog = new SignVerifyMessageDialog(platformStyle, this);
     signVerifyMessageDialog->setAttribute(Qt::WA_DeleteOnClose);
     signVerifyMessageDialog->setModel(walletModel);
     signVerifyMessageDialog->showTab_VM(true);
@@ -277,7 +251,7 @@ void WalletView::updateEncryptionStatus()
 
 void WalletView::encryptWallet(bool status)
 {
-    if(!walletModel)
+    if (!walletModel)
         return;
     AskPassphraseDialog dlg(status ? AskPassphraseDialog::Encrypt : AskPassphraseDialog::Decrypt, this);
     dlg.setModel(walletModel);
@@ -298,8 +272,7 @@ void WalletView::backupWallet()
     if (!walletModel->backupWallet(filename)) {
         Q_EMIT message(tr("Backup Failed"), tr("There was an error trying to save the wallet data to %1.").arg(filename),
             CClientUIInterface::MSG_ERROR);
-        }
-    else {
+    } else {
         Q_EMIT message(tr("Backup Successful"), tr("The wallet data was successfully saved to %1.").arg(filename),
             CClientUIInterface::MSG_INFORMATION);
     }
@@ -314,25 +287,22 @@ void WalletView::changePassphrase()
 
 void WalletView::unlockWallet()
 {
-    if(!walletModel)
+    if (!walletModel)
         return;
-    // Unlock wallet when requested by wallet model
-    if (walletModel->getEncryptionStatus() == WalletModel::Locked)
-    {
+
+    if (walletModel->getEncryptionStatus() == WalletModel::Locked) {
         AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
         dlg.setModel(walletModel);
         dlg.exec();
     }
 }
 
-// Crionic: Hive: Unlock wallet just for hive
 void WalletView::unlockWalletHive()
 {
-    if(!walletModel)
+    if (!walletModel)
         return;
-    // Unlock wallet when requested by wallet model
-    if (walletModel->getEncryptionStatus() == WalletModel::Locked)
-    {
+
+    if (walletModel->getEncryptionStatus() == WalletModel::Locked) {
         AskPassphraseDialog dlg(AskPassphraseDialog::UnlockHiveMining, this);
         dlg.setModel(walletModel);
         dlg.exec();
@@ -341,7 +311,7 @@ void WalletView::unlockWalletHive()
 
 void WalletView::usedSendingAddresses()
 {
-    if(!walletModel)
+    if (!walletModel)
         return;
 
     usedSendingAddressesPage->show();
@@ -351,7 +321,7 @@ void WalletView::usedSendingAddresses()
 
 void WalletView::usedReceivingAddresses()
 {
-    if(!walletModel)
+    if (!walletModel)
         return;
 
     usedReceivingAddressesPage->show();
@@ -359,26 +329,21 @@ void WalletView::usedReceivingAddresses()
     usedReceivingAddressesPage->activateWindow();
 }
 
-void WalletView::showProgress(const QString &title, int nProgress)
+void WalletView::showProgress(const QString& title, int nProgress)
 {
-    if (nProgress == 0)
-    {
+    if (nProgress == 0) {
         progressDialog = new QProgressDialog(title, "", 0, 100);
         progressDialog->setWindowModality(Qt::ApplicationModal);
         progressDialog->setMinimumDuration(0);
         progressDialog->setCancelButton(0);
         progressDialog->setAutoClose(false);
         progressDialog->setValue(0);
-    }
-    else if (nProgress == 100)
-    {
-        if (progressDialog)
-        {
+    } else if (nProgress == 100) {
+        if (progressDialog) {
             progressDialog->close();
             progressDialog->deleteLater();
         }
-    }
-    else if (progressDialog)
+    } else if (progressDialog)
         progressDialog->setValue(nProgress);
 }
 
@@ -387,7 +352,6 @@ void WalletView::requestedSyncWarningInfo()
     Q_EMIT outOfSyncWarningClicked();
 }
 
-// Crionic: Key import helper
 void WalletView::doRescan(CWallet* pwallet, int64_t startTime)
 {
     WalletRescanReserver reserver(pwallet);
@@ -395,11 +359,10 @@ void WalletView::doRescan(CWallet* pwallet, int64_t startTime)
         QMessageBox::critical(0, tr(PACKAGE_NAME), tr("Wallet is currently rescanning. Abort existing rescan or wait."));
         return;
     }
-	pwallet->RescanFromTime(TIMESTAMP_MIN, reserver, true);
-	QMessageBox::information(0, tr(PACKAGE_NAME), tr("Rescan complete."));
+    pwallet->RescanFromTime(TIMESTAMP_MIN, reserver, true);
+    QMessageBox::information(0, tr(PACKAGE_NAME), tr("Rescan complete."));
 }
 
-// Crionic: Key import helper
 void WalletView::importPrivateKey()
 {
     bool ok;
@@ -407,7 +370,7 @@ void WalletView::importPrivateKey()
     if (ok && !privKey.isEmpty()) {
         CWallet* pwallet = GetWalletForQTKeyImport();
 
-        if(!pwallet) {
+        if (!pwallet) {
             QMessageBox::critical(0, tr(PACKAGE_NAME), tr("Couldn't select valid wallet."));
             return;
         }
@@ -420,7 +383,8 @@ void WalletView::importPrivateKey()
         LOCK2(cs_main, pwallet->cs_wallet);
 
         WalletModel::UnlockContext ctx(walletModel->requestUnlock());
-        if(!ctx.isValid())  // Unlock wallet was cancelled
+        if (!ctx.isValid())
+
             return;
 
         CBitcoinSecret vchSecret;
@@ -454,16 +418,16 @@ void WalletView::importPrivateKey()
                 return;
             }
 
-            pwallet->UpdateTimeFirstKey(1); // Mark as rescan needed, even if we don't do it now (it'll happen next restart if not before)
-            
+            pwallet->UpdateTimeFirstKey(1);
+
             QMessageBox msgBox;
             msgBox.setText(tr("Key successfully added to wallet."));
             msgBox.setInformativeText(tr("Rescan now? (Select No if you have more keys to import)"));
             msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
             msgBox.setDefaultButton(QMessageBox::No);
-            
+
             if (msgBox.exec() == QMessageBox::Yes)
-                boost::thread t{WalletView::doRescan, pwallet, TIMESTAMP_MIN};                
+                boost::thread t{WalletView::doRescan, pwallet, TIMESTAMP_MIN};
         }
         return;
     }

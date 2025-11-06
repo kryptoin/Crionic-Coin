@@ -5,41 +5,18 @@
 #ifndef BITCOIN_BENCH_BENCH_H
 #define BITCOIN_BENCH_BENCH_H
 
+#include <chrono>
 #include <functional>
 #include <limits>
 #include <map>
 #include <string>
 #include <vector>
-#include <chrono>
 
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
-// Simple micro-benchmarking framework; API mostly matches a subset of the Google Benchmark
-// framework (see https://github.com/google/benchmark)
-// Why not use the Google Benchmark framework? Because adding Yet Another Dependency
-// (that uses cmake as its build system and has lots of features we don't need) isn't
-// worth it.
-
-/*
- * Usage:
-
-static void CODE_TO_TIME(benchmark::State& state)
+namespace benchmark
 {
-    ... do any setup needed...
-    while (state.KeepRunning()) {
-       ... do stuff you want to time...
-    }
-    ... do any cleanup needed...
-}
-
-// default to running benchmark for 5000 iterations
-BENCHMARK(CODE_TO_TIME, 5000);
-
- */
-
-namespace benchmark {
-// In case high_resolution_clock is steady, prefer that, otherwise use steady_clock.
 struct best_clock {
     using hi_res_clock = std::chrono::high_resolution_clock;
     using steady_clock = std::chrono::steady_clock;
@@ -74,7 +51,7 @@ public:
         }
 
         bool result = UpdateTimer(clock::now());
-        // measure again so runtime of UpdateTimer is not included
+
         m_start_time = clock::now();
         return result;
     }
@@ -97,7 +74,6 @@ public:
     static void RunAll(Printer& printer, uint64_t num_evals, double scaling, const std::string& filter, bool is_list_only);
 };
 
-// interface to output benchmark results.
 class Printer
 {
 public:
@@ -107,7 +83,6 @@ public:
     virtual void footer() = 0;
 };
 
-// default printer to console, shows min, max, median.
 class ConsolePrinter : public Printer
 {
 public:
@@ -116,7 +91,6 @@ public:
     void footer();
 };
 
-// creates box plot with plotly.js
 class PlotlyPrinter : public Printer
 {
 public:
@@ -130,13 +104,9 @@ private:
     int64_t m_width;
     int64_t m_height;
 };
-}
+} // namespace benchmark
 
-
-// BENCHMARK(foo, num_iters_for_one_second) expands to:  benchmark::BenchRunner bench_11foo("foo", num_iterations);
-// Choose a num_iters_for_one_second that takes roughly 1 second. The goal is that all benchmarks should take approximately
-// the same time, and scaling factor can be used that the total time is appropriate for your system.
 #define BENCHMARK(n, num_iters_for_one_second) \
     benchmark::BenchRunner BOOST_PP_CAT(bench_, BOOST_PP_CAT(__LINE__, n))(BOOST_PP_STRINGIZE(n), n, (num_iters_for_one_second));
 
-#endif // BITCOIN_BENCH_BENCH_H
+#endif

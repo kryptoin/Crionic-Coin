@@ -14,10 +14,6 @@ static const int64_t DEFAULT_MAX_TIME_ADJUSTMENT = 35 * 60;
 
 class CNetAddr;
 
-/** 
- * Median filter over a stream of values.
- * Returns the median of the last N numbers
- */
 template <typename T>
 class CMedianFilter
 {
@@ -50,10 +46,12 @@ public:
     {
         int vSortedSize = vSorted.size();
         assert(vSortedSize > 0);
-        if (vSortedSize & 1) // Odd number of elements
+        if (vSortedSize & 1)
+
         {
             return vSorted[vSortedSize / 2];
-        } else // Even number of elements
+        } else
+
         {
             return (vSorted[vSortedSize / 2 - 1] + vSorted[vSortedSize / 2]) / 2;
         }
@@ -70,9 +68,8 @@ public:
     }
 };
 
-/** Functions to keep track of adjusted P2P time */
 int64_t GetTimeOffset();
 int64_t GetAdjustedTime();
 void AddTimeData(const CNetAddr& ip, int64_t nTime);
 
-#endif // BITCOIN_TIMEDATA_H
+#endif

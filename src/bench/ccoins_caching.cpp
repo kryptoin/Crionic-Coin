@@ -9,27 +9,18 @@
 
 #include <vector>
 
-// FIXME: Dedup with SetupDummyInputs in test/transaction_tests.cpp.
-//
-// Helper: create two dummy transactions, each with
-// two outputs.  The first has 11 and 50 CENT outputs
-// paid to a TX_PUBKEY, the second 21 and 22 CENT outputs
-// paid to a TX_PUBKEYHASH.
-//
 static std::vector<CMutableTransaction>
 SetupDummyInputs(CBasicKeyStore& keystoreRet, CCoinsViewCache& coinsRet)
 {
     std::vector<CMutableTransaction> dummyTransactions;
     dummyTransactions.resize(2);
 
-    // Add some keys to the keystore:
     CKey key[4];
     for (int i = 0; i < 4; i++) {
         key[i].MakeNewKey(i % 2);
         keystoreRet.AddKey(key[i]);
     }
 
-    // Create some dummy input transactions
     dummyTransactions[0].vout.resize(2);
     dummyTransactions[0].vout[0].nValue = 11 * CENT;
     dummyTransactions[0].vout[0].scriptPubKey << ToByteVector(key[0].GetPubKey()) << OP_CHECKSIG;
@@ -47,12 +38,6 @@ SetupDummyInputs(CBasicKeyStore& keystoreRet, CCoinsViewCache& coinsRet)
     return dummyTransactions;
 }
 
-// Microbenchmark for simple accesses to a CCoinsViewCache database. Note from
-// laanwj, "replicating the actual usage patterns of the client is hard though,
-// many times micro-benchmarks of the database showed completely different
-// characteristics than e.g. reindex timings. But that's not a requirement of
-// every benchmark."
-// (https://github.com/bitcoin/bitcoin/issues/7883#issuecomment-224807484)
 static void CCoinsCaching(benchmark::State& state)
 {
     CBasicKeyStore keystore;
@@ -75,7 +60,6 @@ static void CCoinsCaching(benchmark::State& state)
     t1.vout[0].nValue = 90 * CENT;
     t1.vout[0].scriptPubKey << OP_1;
 
-    // Benchmark.
     while (state.KeepRunning()) {
         bool success = AreInputsStandard(t1, coins);
         assert(success);

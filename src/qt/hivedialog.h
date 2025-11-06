@@ -22,23 +22,26 @@ class PlatformStyle;
 class ClientModel;
 class WalletModel;
 
-namespace Ui {
-    class HiveDialog;
+namespace Ui
+{
+class HiveDialog;
 }
 
 QT_BEGIN_NAMESPACE
 class QModelIndex;
 QT_END_NAMESPACE
 
-extern BeePopGraphPoint beePopGraph[1024*40];
+extern BeePopGraphPoint beePopGraph[1024 * 40];
 
-class QCPAxisTickerGI : public QCPAxisTicker 
+class QCPAxisTickerGI : public QCPAxisTicker
 {
 public:
     double global100;
 
-    QString getTickLabel(double tick, const QLocale &locale, QChar formatChar, int precision) {
-        tick = (tick / global100 * 100); // At tick = global100, scale is 100
+    QString getTickLabel(double tick, const QLocale& locale, QChar formatChar, int precision)
+    {
+        tick = (tick / global100 * 100);
+
         return QString::number((int)tick);
     }
 };
@@ -58,30 +61,29 @@ public:
         HIVE_COL_MIN_WIDTH = 100
     };
 
-    explicit HiveDialog(const PlatformStyle *platformStyle, QWidget *parent = 0);
+    explicit HiveDialog(const PlatformStyle* platformStyle, QWidget* parent = 0);
     ~HiveDialog();
 
-    void setClientModel(ClientModel *_clientModel);
-    void setModel(WalletModel *model);
+    void setClientModel(ClientModel* _clientModel);
+    void setModel(WalletModel* model);
     static QString formatLargeNoLocale(int i);
 
 public Q_SLOTS:
     void updateData(bool forceGlobalSummaryUpdate = false);
     void updateData2(bool forceGlobalSummaryUpdate = false);
     void updateData3(bool forceGlobalSummaryUpdate = false);
-    void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
-                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
+    void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
     void setEncryptionStatus(int status);
 
 Q_SIGNALS:
-    void hiveStatusIconChanged(QString icon, QString tooltip);    
+    void hiveStatusIconChanged(QString icon, QString tooltip);
 
 private:
-    Ui::HiveDialog *ui;
-    GUIUtil::TableViewLastColumnResizingFixer *columnResizingFixer;
-    ClientModel *clientModel;
-    WalletModel *model;
-    const PlatformStyle *platformStyle;
+    Ui::HiveDialog* ui;
+    GUIUtil::TableViewLastColumnResizingFixer* columnResizingFixer;
+    ClientModel* clientModel;
+    WalletModel* model;
+    const PlatformStyle* platformStyle;
     CAmount beeCost, beeCost2, totalCost;
     int immature, mature, dead, blocksFound;
     CAmount rewardsPaid, cost, profit;
@@ -89,21 +91,22 @@ private:
     CAmount currentBalance;
     double beePopIndex;
     int lastGlobalCheckHeight;
-    virtual void resizeEvent(QResizeEvent *event);
-    QCPItemText *graphMouseoverText;
-    QCPItemTracer *graphTracerMature;
-    QCPItemTracer *graphTracerImmature;
-    QCPItemLine *globalMarkerLine;
+    virtual void resizeEvent(QResizeEvent* event);
+    QCPItemText* graphMouseoverText;
+    QCPItemTracer* graphTracerMature;
+    QCPItemTracer* graphTracerImmature;
+    QCPItemLine* globalMarkerLine;
     QSharedPointer<QCPAxisTickerGI> giTicker;
 
     void updateTotalCostDisplay();
     void initGraph();
     void updateGraph();
-    void showPointToolTip(QMouseEvent *event);
-    void setAmountField(QLabel *field, CAmount value);
+    void showPointToolTip(QMouseEvent* event);
+    void setAmountField(QLabel* field, CAmount value);
 
 private Q_SLOTS:
-    void on_showHiveOptionsButton_clicked();    // Crionic: Hive: Mining optimisations: Shortcut to Hive mining options
+    void on_showHiveOptionsButton_clicked();
+
     void on_createBeesButton_clicked();
     void on_beeCountSpinner_valueChanged(int i);
     void on_includeDeadBeesCheckbox_stateChanged();
@@ -115,4 +118,4 @@ private Q_SLOTS:
     void onMouseMove(QMouseEvent* event);
 };
 
-#endif // BITCOIN_QT_HIVEDIALOG_H
+#endif

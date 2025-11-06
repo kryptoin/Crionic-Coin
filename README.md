@@ -1,74 +1,48 @@
 
 # Crionic Core integration/staging tree
 ===========================================
-Crionic Core new release version : 1.1.0
+Crionic Core new release version : Crionic Core:3.1.1
 
-README.md Updated on april 17st 2023
+README.md
 
 What is Crionic ?
 ----------------------
 
-Crionic is a coin based on Lightning-Cash ( LNC ),with Yespower POW algorithm, including DarkGravityWave ( difficulty changes for every block ) and possible CURRENT block difficulty change over time to protect against high network hash variation and long stale tip. It is also 15 times faster than LitecoinCash. For full details, please visit our website at https://coin.crionic.org
+Crionic is a coin based on Lightning-Cash ( LNC ),with Yespower POW algorithm, including DarkGravityWave ( difficulty changes for every block ) and possible CURRENT block difficulty change over time to protect against high network hash variation and long stale tip.
 
 Compiled binary releases are available here on Github.
-Whitepapers will be available soon.
-
-Current supported version are 1.1.0
 
 Crionic Core is the full node software that makes up the backbone of the Crionic p2p network.
 
-
-Website : https://coin.crionic.org
-
-Pool : https://pool.crionic.org
-
-Block Explorer : https://explorer.crionic.org
-
-Discord Server : https://discord.gg/SKDkjcJTKM
-
-
-Exchanges : 
-https://xeggex.com/market/CRNC_USDT 
-
-
-Integration under way : 
-
-
-
-Any OS build instructions :
-
-https://github.com/diabaths/Crionic-Coin/blob/master/doc/build-ALL-OS.md
-
-
-
+{
+  "height": 4252828,
+  "bestblock": "fa7f7c66b8a87982508c46db8623b6a9ec213c059bdc840c0cf4533a66a18530",
+  "transactions": 640522,
+  "txouts": 836032,
+  "bogosize": 62075450,
+  "hash_serialized_2": "91c15a2349c1407be454c09749a0f842c87aa25e5f6e667b9ba7b2a87a789645",
+  "disk_size": 67913158,
+  "total_amount": 172414056.80000000
+}
 
 Crionic Characteristics
 ---------------------------------------------------------------------------
 
-
 - Hash Algorithm : Yespower POW algorithm    ( CPU only )
 
-( With the addition of modified Dash's DarkGravityWave v3 algorithm, that changes difficulty every block, and progressively lowers difficulty if long stale tips happens. Tested and fully working !!) ---> check DarkGravity V3 (https://github.com/dashpay/dash/blob/master/src/pow.cpp#L82) (By Evan Duffield)
- <evan@dash.org>
-
-And modifications from Lighining-Cash Dev made here :        https://github.com/diabaths/Crionic-Coin/blob/master/src/pow.cpp#L110
-
 ( Difficulty adjusted every block and possibly in CURRENT block if a long network stale tip happens !! This protects Crionic from high hash variations and " high hash attacks " , that happens frequently for new coins and kills them by making the mining difficulty too high for the " normal " network's hash rate. )
-
 
 - The Hive : A "hodl and profit" mining system accessible to everyone, that works side by side with POW mining, invented by LitecoinCash's developers !!
 
 - YespowerLTNCG / Hive blocks ratio : 75 % / 25 % ( active since Hive 1.1 )
 
-- Maximum Supply : 335.999.919,891 CRNC 
+- Maximum Supply : 335.999.919,891 CRNC
 
 - Coins created so far : 4.550.477 CRNC ( @ Block # 0 , May 14th 2023 ) ---> 0 % of max supply
 
-- Coins burned in the hive so far : 68.000 CRNC  on May 14th 2023 
+- Coins burned in the hive so far : 68.000 CRNC  on May 14th 2023
 
 - First halving : Block #4.200.000
-
-- Official Mining Pool http://pool.crionic.org
 
 - 20 seconds block time. ( In chainparams.cpp. is set at 25 seconds, with hive, makes it 20s)
 
@@ -80,7 +54,6 @@ And modifications from Lighining-Cash Dev made here :        https://github.com/
 
 - Halved every 4.200.000 blocks
 
-
 The Hive Characteristics
 ---------------------------------------------------------------------------
 
@@ -88,19 +61,17 @@ The Hive Characteristics
 
 - blocks a bee lives for after maturation : 48 * 24 * 29,75= 34.272 Blocks or ~= 7 Days
 
-- Target Hive block frequency (1 out of this many blocks should be Hivemined) : 1 Every 4 Blocks 
+- Target Hive block frequency (1 out of this many blocks should be Hivemined) : 1 Every 4 Blocks
 
 - Bee cost Creation : ~0.08 CRNC
 
-- Hive 1.1- Activated: June 17, 2023 (more bee lives and more) 
+- Hive 1.1- Activated: June 17, 2023 (more bee lives and more)
 
-- OPTIONAL to return 10% of bee Creation to community fund( will by used to promote the coin)
-
-
+- OPTIONAL to return 10% of bee Creation to community fund(will by used to promote the coin)
 
 Block Reward
 ---------------------------------------------------------------------------
-					
+
 | From Block   | To Block     | Coins Reward | Total Coins Supply | Halving Time  |
 |--------------|--------------|--------------|--------------------|---------------|
 | 0            | 4,200,000    | 40,0000      | 168,000,000        | July 2025 |
@@ -121,21 +92,13 @@ Block Reward
 | 63,000,001   | 67,200,000   | 0,00122      | 5,127              | April 2059 |
 | 67,200,001   | 71,400,000   | 0,00061      | 2,563              | July 2061 |
 | 71,400,001   | 75,600,000   | 0,00031      | 1,282              | October 2063 |
-| 
-	
-
-
+|
 
 License
 -------
 
-Crionic Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
+Crionic Core is released under the terms of the MIT license. See [COPYING] for more
 information or see https://opensource.org/licenses/MIT.
-
-A copy of this license can be found here :
-
-https://github.com/diabaths/Crionic-Coin/blob/master/COPYING
-
 
 Development Process
 -------------------

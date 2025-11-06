@@ -19,19 +19,9 @@ void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
     LogPrintf("LOCKCONTENTION: %s\n", pszName);
     LogPrintf("Locker: %s:%d\n", pszFile, nLine);
 }
-#endif /* DEBUG_LOCKCONTENTION */
+#endif
 
 #ifdef DEBUG_LOCKORDER
-//
-// Early deadlock detection.
-// Problem being solved:
-//    Thread 1 locks  A, then B, then C
-//    Thread 2 locks  D, then C, then A
-//     --> may result in deadlock between the two threads, depending on when they run.
-// Solution implemented here:
-// Keep track of pairs of locks: (A before B), (A before C), etc.
-// Complain if any thread tries to lock in a different order.
-//
 
 struct CLockLocation {
     CLockLocation(const char* pszName, const char* pszFile, int nLine, bool fTryIn)
@@ -54,15 +44,11 @@ private:
     int sourceLine;
 };
 
-typedef std::vector<std::pair<void*, CLockLocation> > LockStack;
+typedef std::vector<std::pair<void*, CLockLocation>> LockStack;
 typedef std::map<std::pair<void*, void*>, LockStack> LockOrders;
-typedef std::set<std::pair<void*, void*> > InvLockOrders;
+typedef std::set<std::pair<void*, void*>> InvLockOrders;
 
 struct LockData {
-    // Very ugly hack: as the global constructs and destructors run single
-    // threaded, we use this boolean to know whether LockData still exists,
-    // as DeleteLock can get called by global CCriticalSection destructors
-    // after LockData disappears.
     bool available;
     LockData() : available(true) {}
     ~LockData() { available = false; }
@@ -78,7 +64,7 @@ static void potential_deadlock_detected(const std::pair<void*, void*>& mismatch,
 {
     LogPrintf("POTENTIAL DEADLOCK DETECTED\n");
     LogPrintf("Previous lock order was:\n");
-    for (const std::pair<void*, CLockLocation> & i : s2) {
+    for (const std::pair<void*, CLockLocation>& i : s2) {
         if (i.first == mismatch.first) {
             LogPrintf(" (1)");
         }
@@ -88,7 +74,7 @@ static void potential_deadlock_detected(const std::pair<void*, void*>& mismatch,
         LogPrintf(" %s\n", i.second.ToString());
     }
     LogPrintf("Current lock order is:\n");
-    for (const std::pair<void*, CLockLocation> & i : s1) {
+    for (const std::pair<void*, CLockLocation>& i : s1) {
         if (i.first == mismatch.first) {
             LogPrintf(" (1)");
         }
@@ -109,7 +95,7 @@ static void push_lock(void* c, const CLockLocation& locklocation)
 
     lockstack->push_back(std::make_pair(c, locklocation));
 
-    for (const std::pair<void*, CLockLocation> & i : (*lockstack)) {
+    for (const std::pair<void*, CLockLocation>& i : (*lockstack)) {
         if (i.first == c)
             break;
 
@@ -143,14 +129,14 @@ void LeaveCritical()
 std::string LocksHeld()
 {
     std::string result;
-    for (const std::pair<void*, CLockLocation> & i : *lockstack)
+    for (const std::pair<void*, CLockLocation>& i : *lockstack)
         result += i.second.ToString() + std::string("\n");
     return result;
 }
 
 void AssertLockHeldInternal(const char* pszName, const char* pszFile, int nLine, void* cs)
 {
-    for (const std::pair<void*, CLockLocation> & i : *lockstack)
+    for (const std::pair<void*, CLockLocation>& i : *lockstack)
         if (i.first == cs)
             return;
     fprintf(stderr, "Assertion failed: lock %s not held in %s:%i; locks held:\n%s", pszName, pszFile, nLine, LocksHeld().c_str());
@@ -170,7 +156,6 @@ void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, int nLi
 void DeleteLock(void* cs)
 {
     if (!lockdata.available) {
-        // We're already shutting down.
         return;
     }
     std::lock_guard<std::mutex> lock(lockdata.dd_mutex);
@@ -189,4 +174,4 @@ void DeleteLock(void* cs)
     }
 }
 
-#endif /* DEBUG_LOCKORDER */
+#endif

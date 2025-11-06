@@ -21,9 +21,6 @@ static void AddTx(const CTransaction& tx, const CAmount& nFee, CTxMemPool& pool)
                                         spendsCoinbase, sigOpCost, lp));
 }
 
-// Right now this is only testing eviction performance in an extremely small
-// mempool. Code needs to be written to generate a much wider variety of
-// unique transactions for a more meaningful performance measurement.
 static void MempoolEviction(benchmark::State& state)
 {
     CMutableTransaction tx1 = CMutableTransaction();

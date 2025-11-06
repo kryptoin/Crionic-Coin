@@ -14,7 +14,8 @@
 
 static constexpr double INF_FEERATE = 1e99;
 
-std::string StringForFeeEstimateHorizon(FeeEstimateHorizon horizon) {
+std::string StringForFeeEstimateHorizon(FeeEstimateHorizon horizon)
+{
     static const std::map<FeeEstimateHorizon, std::string> horizon_strings = {
         {FeeEstimateHorizon::SHORT_HALFLIFE, "short"},
         {FeeEstimateHorizon::MED_HALFLIFE, "medium"},
@@ -27,7 +28,8 @@ std::string StringForFeeEstimateHorizon(FeeEstimateHorizon horizon) {
     return horizon_string->second;
 }
 
-std::string StringForFeeReason(FeeReason reason) {
+std::string StringForFeeReason(FeeReason reason)
+{
     static const std::map<FeeReason, std::string> fee_reason_strings = {
         {FeeReason::NONE, "None"},
         {FeeReason::HALF_ESTIMATE, "Half Target 60% Threshold"},
@@ -38,8 +40,7 @@ std::string StringForFeeReason(FeeReason reason) {
         {FeeReason::PAYTXFEE, "PayTxFee set"},
         {FeeReason::FALLBACK, "Fallback fee"},
         {FeeReason::REQUIRED, "Minimum Required Fee"},
-        {FeeReason::MAXTXFEE, "MaxTxFee limit"}
-    };
+        {FeeReason::MAXTXFEE, "MaxTxFee limit"}};
     auto reason_string = fee_reason_strings.find(reason);
 
     if (reason_string == fee_reason_strings.end()) return "Unknown";
@@ -47,7 +48,8 @@ std::string StringForFeeReason(FeeReason reason) {
     return reason_string->second;
 }
 
-bool FeeModeFromString(const std::string& mode_string, FeeEstimateMode& fee_estimate_mode) {
+bool FeeModeFromString(const std::string& mode_string, FeeEstimateMode& fee_estimate_mode)
+{
     static const std::map<std::string, FeeEstimateMode> fee_modes = {
         {"UNSET", FeeEstimateMode::UNSET},
         {"ECONOMICAL", FeeEstimateMode::ECONOMICAL},
@@ -61,120 +63,58 @@ bool FeeModeFromString(const std::string& mode_string, FeeEstimateMode& fee_esti
     return true;
 }
 
-/**
- * We will instantiate an instance of this class to track transactions that were
- * included in a block. We will lump transactions into a bucket according to their
- * approximate feerate and then track how long it took for those txs to be included in a block
- *
- * The tracking of unconfirmed (mempool) transactions is completely independent of the
- * historical tracking of transactions that have been confirmed in a block.
- */
 class TxConfirmStats
 {
 private:
-    //Define the buckets we will group transactions into
-    const std::vector<double>& buckets;              // The upper-bound of the range for the bucket (inclusive)
-    const std::map<double, unsigned int>& bucketMap; // Map of bucket upper-bound to index into all vectors by bucket
+    const std::vector<double>& buckets;
 
-    // For each bucket X:
-    // Count the total # of txs in each bucket
-    // Track the historical moving average of this total over blocks
+    const std::map<double, unsigned int>& bucketMap;
+
     std::vector<double> txCtAvg;
 
-    // Count the total # of txs confirmed within Y blocks in each bucket
-    // Track the historical moving average of theses totals over blocks
-    std::vector<std::vector<double>> confAvg; // confAvg[Y][X]
+    std::vector<std::vector<double>> confAvg;
 
-    // Track moving avg of txs which have been evicted from the mempool
-    // after failing to be confirmed within Y blocks
-    std::vector<std::vector<double>> failAvg; // failAvg[Y][X]
+    std::vector<std::vector<double>> failAvg;
 
-    // Sum the total feerate of all tx's in each bucket
-    // Track the historical moving average of this total over blocks
     std::vector<double> avg;
-
-    // Combine the conf counts with tx counts to calculate the confirmation % for each Y,X
-    // Combine the total value with the tx counts to calculate the avg feerate per bucket
 
     double decay;
 
-    // Resolution (# of blocks) with which confirmations are tracked
     unsigned int scale;
 
-    // Mempool counts of outstanding transactions
-    // For each bucket X, track the number of transactions in the mempool
-    // that are unconfirmed for each possible confirmation value Y
-    std::vector<std::vector<int> > unconfTxs;  //unconfTxs[Y][X]
-    // transactions still unconfirmed after GetMaxConfirms for each bucket
+    std::vector<std::vector<int>> unconfTxs;
+
     std::vector<int> oldUnconfTxs;
 
     void resizeInMemoryCounters(size_t newbuckets);
 
 public:
-    /**
-     * Create new TxConfirmStats. This is called by BlockPolicyEstimator's
-     * constructor with default values.
-     * @param defaultBuckets contains the upper limits for the bucket boundaries
-     * @param maxPeriods max number of periods to track
-     * @param decay how much to decay the historical moving average per block
-     */
-    TxConfirmStats(const std::vector<double>& defaultBuckets, const std::map<double, unsigned int>& defaultBucketMap,
-                   unsigned int maxPeriods, double decay, unsigned int scale);
+    TxConfirmStats(const std::vector<double>& defaultBuckets, const std::map<double, unsigned int>& defaultBucketMap, unsigned int maxPeriods, double decay, unsigned int scale);
 
-    /** Roll the circular buffer for unconfirmed txs*/
     void ClearCurrent(unsigned int nBlockHeight);
 
-    /**
-     * Record a new transaction data point in the current block stats
-     * @param blocksToConfirm the number of blocks it took this transaction to confirm
-     * @param val the feerate of the transaction
-     * @warning blocksToConfirm is 1-based and has to be >= 1
-     */
     void Record(int blocksToConfirm, double val);
 
-    /** Record a new transaction entering the mempool*/
     unsigned int NewTx(unsigned int nBlockHeight, double val);
 
-    /** Remove a transaction from mempool tracking stats*/
-    void removeTx(unsigned int entryHeight, unsigned int nBestSeenHeight,
-                  unsigned int bucketIndex, bool inBlock);
+    void removeTx(unsigned int entryHeight, unsigned int nBestSeenHeight, unsigned int bucketIndex, bool inBlock);
 
-    /** Update our estimates by decaying our historical moving average and updating
-        with the data gathered from the current block */
     void UpdateMovingAverages();
 
-    /**
-     * Calculate a feerate estimate.  Find the lowest value bucket (or range of buckets
-     * to make sure we have enough data points) whose transactions still have sufficient likelihood
-     * of being confirmed within the target number of confirmations
-     * @param confTarget target number of confirmations
-     * @param sufficientTxVal required average number of transactions per block in a bucket range
-     * @param minSuccess the success probability we require
-     * @param requireGreater return the lowest feerate such that all higher values pass minSuccess OR
-     *        return the highest feerate such that all lower values fail minSuccess
-     * @param nBlockHeight the current block height
-     */
-    double EstimateMedianVal(int confTarget, double sufficientTxVal,
-                             double minSuccess, bool requireGreater, unsigned int nBlockHeight,
-                             EstimationResult *result = nullptr) const;
+    double EstimateMedianVal(int confTarget, double sufficientTxVal, double minSuccess, bool requireGreater, unsigned int nBlockHeight, EstimationResult* result = nullptr) const;
 
-    /** Return the max number of confirms we're tracking */
     unsigned int GetMaxConfirms() const { return scale * confAvg.size(); }
 
-    /** Write state of estimation data to a file*/
     void Write(CAutoFile& fileout) const;
 
-    /**
-     * Read saved state of estimation data from a file and replace all internal data structures and
-     * variables with this state.
-     */
     void Read(CAutoFile& filein, int nFileVersion, size_t numBuckets);
 };
 
-
 TxConfirmStats::TxConfirmStats(const std::vector<double>& defaultBuckets,
-                                const std::map<double, unsigned int>& defaultBucketMap,
-                               unsigned int maxPeriods, double _decay, unsigned int _scale)
+    const std::map<double, unsigned int>& defaultBucketMap,
+    unsigned int maxPeriods,
+    double _decay,
+    unsigned int _scale)
     : buckets(defaultBuckets), bucketMap(defaultBucketMap)
 {
     decay = _decay;
@@ -195,8 +135,8 @@ TxConfirmStats::TxConfirmStats(const std::vector<double>& defaultBuckets,
     resizeInMemoryCounters(buckets.size());
 }
 
-void TxConfirmStats::resizeInMemoryCounters(size_t newbuckets) {
-    // newbuckets must be passed in because the buckets referred to during Read have not been updated yet.
+void TxConfirmStats::resizeInMemoryCounters(size_t newbuckets)
+{
     unconfTxs.resize(GetMaxConfirms());
     for (unsigned int i = 0; i < unconfTxs.size(); i++) {
         unconfTxs[i].resize(newbuckets);
@@ -204,22 +144,19 @@ void TxConfirmStats::resizeInMemoryCounters(size_t newbuckets) {
     oldUnconfTxs.resize(newbuckets);
 }
 
-// Roll the unconfirmed txs circular buffer
 void TxConfirmStats::ClearCurrent(unsigned int nBlockHeight)
 {
     for (unsigned int j = 0; j < buckets.size(); j++) {
-        oldUnconfTxs[j] += unconfTxs[nBlockHeight%unconfTxs.size()][j];
-        unconfTxs[nBlockHeight%unconfTxs.size()][j] = 0;
+        oldUnconfTxs[j] += unconfTxs[nBlockHeight % unconfTxs.size()][j];
+        unconfTxs[nBlockHeight % unconfTxs.size()][j] = 0;
     }
 }
 
-
 void TxConfirmStats::Record(int blocksToConfirm, double val)
 {
-    // blocksToConfirm is 1-based
     if (blocksToConfirm < 1)
         return;
-    int periodsToConfirm = (blocksToConfirm + scale - 1)/scale;
+    int periodsToConfirm = (blocksToConfirm + scale - 1) / scale;
     unsigned int bucketindex = bucketMap.lower_bound(val)->second;
     for (size_t i = periodsToConfirm; i <= confAvg.size(); i++) {
         confAvg[i - 1][bucketindex]++;
@@ -240,32 +177,23 @@ void TxConfirmStats::UpdateMovingAverages()
     }
 }
 
-// returns -1 on error conditions
-double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
-                                         double successBreakPoint, bool requireGreater,
-                                         unsigned int nBlockHeight, EstimationResult *result) const
+double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal, double successBreakPoint, bool requireGreater, unsigned int nBlockHeight, EstimationResult* result) const
 {
-    // Counters for a bucket (or range of buckets)
-    double nConf = 0; // Number of tx's confirmed within the confTarget
-    double totalNum = 0; // Total number of tx's that were ever confirmed
-    int extraNum = 0;  // Number of tx's still in mempool for confTarget or longer
-    double failNum = 0; // Number of tx's that were never confirmed but removed from the mempool after confTarget
-    int periodTarget = (confTarget + scale - 1)/scale;
+    double nConf = 0;
+
+    double totalNum = 0;
+
+    int extraNum = 0;
+
+    double failNum = 0;
+
+    int periodTarget = (confTarget + scale - 1) / scale;
 
     int maxbucketindex = buckets.size() - 1;
 
-    // requireGreater means we are looking for the lowest feerate such that all higher
-    // values pass, so we start at maxbucketindex (highest feerate) and look at successively
-    // smaller buckets until we reach failure.  Otherwise, we are looking for the highest
-    // feerate such that all lower values fail, and we go in the opposite direction.
     unsigned int startbucket = requireGreater ? maxbucketindex : 0;
     int step = requireGreater ? -1 : 1;
 
-    // We'll combine buckets until we have enough samples.
-    // The near and far variables will define the range we've combined
-    // The best variables are the last range we saw which still had a high
-    // enough confirmation rate to count as success.
-    // The cur variables are the current range we're counting.
     unsigned int curNearBucket = startbucket;
     unsigned int bestNearBucket = startbucket;
     unsigned int curFarBucket = startbucket;
@@ -278,7 +206,6 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
     EstimatorBucket passBucket;
     EstimatorBucket failBucket;
 
-    // Start counting from highest(default) or lowest feerate transactions
     for (int bucket = startbucket; bucket >= 0 && bucket <= maxbucketindex; bucket += step) {
         if (newBucketRange) {
             curNearBucket = bucket;
@@ -289,19 +216,14 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
         totalNum += txCtAvg[bucket];
         failNum += failAvg[periodTarget - 1][bucket];
         for (unsigned int confct = confTarget; confct < GetMaxConfirms(); confct++)
-            extraNum += unconfTxs[(nBlockHeight - confct)%bins][bucket];
+            extraNum += unconfTxs[(nBlockHeight - confct) % bins][bucket];
         extraNum += oldUnconfTxs[bucket];
-        // If we have enough transaction data points in this range of buckets,
-        // we can test for success
-        // (Only count the confirmed data points, so that each confirmation count
-        // will be looking at the same amount of data and same bucket breaks)
+
         if (totalNum >= sufficientTxVal / (1 - decay)) {
             double curPct = nConf / (totalNum + failNum + extraNum);
 
-            // Check to see if we are no longer getting confirmed at the success rate
             if ((requireGreater && curPct < successBreakPoint) || (!requireGreater && curPct > successBreakPoint)) {
                 if (passing == true) {
-                    // First time we hit a failure record the failed bucket
                     unsigned int failMinBucket = std::min(curNearBucket, curFarBucket);
                     unsigned int failMaxBucket = std::max(curNearBucket, curFarBucket);
                     failBucket.start = failMinBucket ? buckets[failMinBucket - 1] : 0;
@@ -314,10 +236,10 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
                 }
                 continue;
             }
-            // Otherwise update the cumulative stats, and the bucket variables
-            // and reset the counters
+
             else {
-                failBucket = EstimatorBucket(); // Reset any failed bucket, currently passing
+                failBucket = EstimatorBucket();
+
                 foundAnswer = true;
                 passing = true;
                 passBucket.withinTarget = nConf;
@@ -338,10 +260,6 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
     double median = -1;
     double txSum = 0;
 
-    // Calculate the "average" feerate of the best bucket range that met success conditions
-    // Find the bucket with the median transaction and then report the average feerate from that bucket
-    // This is a compromise between finding the median which we can't since we don't save all tx's
-    // and reporting the average which is less accurate
     unsigned int minBucket = std::min(bestNearBucket, bestFarBucket);
     unsigned int maxBucket = std::max(bestNearBucket, bestFarBucket);
     for (unsigned int j = minBucket; j <= maxBucket; j++) {
@@ -352,17 +270,16 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
         for (unsigned int j = minBucket; j <= maxBucket; j++) {
             if (txCtAvg[j] < txSum)
                 txSum -= txCtAvg[j];
-            else { // we're in the right bucket
+            else {
                 median = avg[j] / txCtAvg[j];
                 break;
             }
         }
 
-        passBucket.start = minBucket ? buckets[minBucket-1] : 0;
+        passBucket.start = minBucket ? buckets[minBucket - 1] : 0;
         passBucket.end = buckets[maxBucket];
     }
 
-    // If we were passing until we reached last few buckets with insufficient data, then report those as failed
     if (passing && !newBucketRange) {
         unsigned int failMinBucket = std::min(curNearBucket, curFarBucket);
         unsigned int failMaxBucket = std::max(curNearBucket, curFarBucket);
@@ -375,14 +292,13 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
     }
 
     LogPrint(BCLog::ESTIMATEFEE, "FeeEst: %d %s%.0f%% decay %.5f: feerate: %g from (%g - %g) %.2f%% %.1f/(%.1f %d mem %.1f out) Fail: (%g - %g) %.2f%% %.1f/(%.1f %d mem %.1f out)\n",
-             confTarget, requireGreater ? ">" : "<", 100.0 * successBreakPoint, decay,
-             median, passBucket.start, passBucket.end,
-             100 * passBucket.withinTarget / (passBucket.totalConfirmed + passBucket.inMempool + passBucket.leftMempool),
-             passBucket.withinTarget, passBucket.totalConfirmed, passBucket.inMempool, passBucket.leftMempool,
-             failBucket.start, failBucket.end,
-             100 * failBucket.withinTarget / (failBucket.totalConfirmed + failBucket.inMempool + failBucket.leftMempool),
-             failBucket.withinTarget, failBucket.totalConfirmed, failBucket.inMempool, failBucket.leftMempool);
-
+        confTarget, requireGreater ? ">" : "<", 100.0 * successBreakPoint, decay,
+        median, passBucket.start, passBucket.end,
+        100 * passBucket.withinTarget / (passBucket.totalConfirmed + passBucket.inMempool + passBucket.leftMempool),
+        passBucket.withinTarget, passBucket.totalConfirmed, passBucket.inMempool, passBucket.leftMempool,
+        failBucket.start, failBucket.end,
+        100 * failBucket.withinTarget / (failBucket.totalConfirmed + failBucket.inMempool + failBucket.leftMempool),
+        failBucket.withinTarget, failBucket.totalConfirmed, failBucket.inMempool, failBucket.leftMempool);
 
     if (result) {
         result->pass = passBucket;
@@ -405,12 +321,8 @@ void TxConfirmStats::Write(CAutoFile& fileout) const
 
 void TxConfirmStats::Read(CAutoFile& filein, int nFileVersion, size_t numBuckets)
 {
-    // Read data file and do some very basic sanity checking
-    // buckets and bucketMap are not updated yet, so don't access them
-    // If there is a read failure, we'll just discard this entire object anyway
     size_t maxConfirms, maxPeriods;
 
-    // The current version will store the decay with each individual TxConfirmStats and also keep a scale factor
     filein >> decay;
     if (decay <= 0 || decay >= 1) {
         throw std::runtime_error("Corrupt estimates file. Decay must be between 0 and 1 (non-inclusive)");
@@ -432,7 +344,7 @@ void TxConfirmStats::Read(CAutoFile& filein, int nFileVersion, size_t numBuckets
     maxPeriods = confAvg.size();
     maxConfirms = scale * maxPeriods;
 
-    if (maxConfirms <= 0 || maxConfirms > 6 * 24 * 7) { // one week
+    if (maxConfirms <= 0 || maxConfirms > 6 * 24 * 7) {
         throw std::runtime_error("Corrupt estimates file.  Must maintain estimates for between 1 and 1008 (one week) confirms");
     }
     for (unsigned int i = 0; i < maxPeriods; i++) {
@@ -451,12 +363,10 @@ void TxConfirmStats::Read(CAutoFile& filein, int nFileVersion, size_t numBuckets
         }
     }
 
-    // Resize the current block variables which aren't stored in the data file
-    // to match the number of confirms and buckets
     resizeInMemoryCounters(numBuckets);
 
     LogPrint(BCLog::ESTIMATEFEE, "Reading estimates: %u buckets counting confirms up to %u blocks\n",
-             numBuckets, maxConfirms);
+        numBuckets, maxConfirms);
 }
 
 unsigned int TxConfirmStats::NewTx(unsigned int nBlockHeight, double val)
@@ -469,13 +379,13 @@ unsigned int TxConfirmStats::NewTx(unsigned int nBlockHeight, double val)
 
 void TxConfirmStats::removeTx(unsigned int entryHeight, unsigned int nBestSeenHeight, unsigned int bucketindex, bool inBlock)
 {
-    //nBestSeenHeight is not updated yet for the new block
     int blocksAgo = nBestSeenHeight - entryHeight;
-    if (nBestSeenHeight == 0)  // the BlockPolicyEstimator hasn't seen any blocks yet
+    if (nBestSeenHeight == 0)
+
         blocksAgo = 0;
     if (blocksAgo < 0) {
         LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy error, blocks ago is negative for mempool tx\n");
-        return;  //This can't happen because we call this with our best seen height, no entries can have higher
+        return;
     }
 
     if (blocksAgo >= (int)unconfTxs.size()) {
@@ -483,19 +393,18 @@ void TxConfirmStats::removeTx(unsigned int entryHeight, unsigned int nBestSeenHe
             oldUnconfTxs[bucketindex]--;
         } else {
             LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy error, mempool tx removed from >25 blocks,bucketIndex=%u already\n",
-                     bucketindex);
+                bucketindex);
         }
-    }
-    else {
+    } else {
         unsigned int blockIndex = entryHeight % unconfTxs.size();
         if (unconfTxs[blockIndex][bucketindex] > 0) {
             unconfTxs[blockIndex][bucketindex]--;
         } else {
             LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy error, mempool tx removed from blockIndex=%u,bucketIndex=%u already\n",
-                     blockIndex, bucketindex);
+                blockIndex, bucketindex);
         }
     }
-    if (!inBlock && (unsigned int)blocksAgo >= scale) { // Only counts as a failure if not confirmed for entire period
+    if (!inBlock && (unsigned int)blocksAgo >= scale) {
         assert(scale != 0);
         unsigned int periodsAgo = blocksAgo / scale;
         for (size_t i = 0; i < periodsAgo && i < failAvg.size(); i++) {
@@ -504,11 +413,6 @@ void TxConfirmStats::removeTx(unsigned int entryHeight, unsigned int nBestSeenHe
     }
 }
 
-// This function is called from CTxMemPool::removeUnchecked to ensure
-// txs removed from the mempool for any reason are no longer
-// tracked. Txs that were part of a block have already been removed in
-// processBlockTx to ensure they are never double tracked, but it is
-// of no harm to try to remove them again.
 bool CBlockPolicyEstimator::removeTx(uint256 hash, bool inBlock)
 {
     LOCK(cs_feeEstimator);
@@ -553,27 +457,20 @@ void CBlockPolicyEstimator::processTransaction(const CTxMemPoolEntry& entry, boo
     uint256 hash = entry.GetTx().GetHash();
     if (mapMemPoolTxs.count(hash)) {
         LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy error mempool tx %s already being tracked\n",
-                 hash.ToString().c_str());
+            hash.ToString().c_str());
         return;
     }
 
     if (txHeight != nBestSeenHeight) {
-        // Ignore side chains and re-orgs; assuming they are random they don't
-        // affect the estimate.  We'll potentially double count transactions in 1-block reorgs.
-        // Ignore txs if BlockPolicyEstimator is not in sync with chainActive.Tip().
-        // It will be synced next time a block is processed.
         return;
     }
 
-    // Only want to be updating estimates when our blockchain is synced,
-    // otherwise we'll miscalculate how many blocks its taking to get included.
     if (!validFeeEstimate) {
         untrackedTxs++;
         return;
     }
     trackedTxs++;
 
-    // Feerates are stored and reported as BTC-per-kb:
     CFeeRate feeRate(entry.GetFee(), entry.GetTxSize());
 
     mapMemPoolTxs[hash].blockHeight = txHeight;
@@ -588,22 +485,15 @@ void CBlockPolicyEstimator::processTransaction(const CTxMemPoolEntry& entry, boo
 bool CBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const CTxMemPoolEntry* entry)
 {
     if (!removeTx(entry->GetTx().GetHash(), true)) {
-        // This transaction wasn't being tracked for fee estimation
         return false;
     }
 
-    // How many blocks did it take for miners to include this transaction?
-    // blocksToConfirm is 1-based, so a transaction included in the earliest
-    // possible block has confirmation count of 1
     int blocksToConfirm = nBlockHeight - entry->GetHeight();
     if (blocksToConfirm <= 0) {
-        // This can't happen because we don't process transactions from a block with a height
-        // lower than our greatest seen height
         LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy error Transaction had negative blocksToConfirm\n");
         return false;
     }
 
-    // Feerates are stored and reported as BTC-per-kb:
     CFeeRate feeRate(entry->GetFee(), entry->GetTxSize());
 
     feeStats->Record(blocksToConfirm, (double)feeRate.GetFeePerK());
@@ -613,35 +503,25 @@ bool CBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const CTxM
 }
 
 void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
-                                         std::vector<const CTxMemPoolEntry*>& entries)
+    std::vector<const CTxMemPoolEntry*>& entries)
 {
     LOCK(cs_feeEstimator);
     if (nBlockHeight <= nBestSeenHeight) {
-        // Ignore side chains and re-orgs; assuming they are random
-        // they don't affect the estimate.
-        // And if an attacker can re-org the chain at will, then
-        // you've got much bigger problems than "attacker can influence
-        // transaction fees."
         return;
     }
 
-    // Must update nBestSeenHeight in sync with ClearCurrent so that
-    // calls to removeTx (via processBlockTx) correctly calculate age
-    // of unconfirmed txs to remove from tracking.
     nBestSeenHeight = nBlockHeight;
 
-    // Update unconfirmed circular buffer
     feeStats->ClearCurrent(nBlockHeight);
     shortStats->ClearCurrent(nBlockHeight);
     longStats->ClearCurrent(nBlockHeight);
 
-    // Decay all exponential averages
     feeStats->UpdateMovingAverages();
     shortStats->UpdateMovingAverages();
     longStats->UpdateMovingAverages();
 
     unsigned int countedTxs = 0;
-    // Update averages with data points from current block
+
     for (const auto& entry : entries) {
         if (processBlockTx(nBlockHeight, entry))
             countedTxs++;
@@ -652,10 +532,9 @@ void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
         LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy first recorded height %u\n", firstRecordedHeight);
     }
 
-
     LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy estimates updated by %u of %u block txs, since last block %u of %u tracked, mempool map size %u, max target %u from %s\n",
-             countedTxs, entries.size(), trackedTxs, trackedTxs + untrackedTxs, mapMemPoolTxs.size(),
-             MaxUsableEstimate(), HistoricalBlockSpan() > BlockSpan() ? "historical" : "current");
+        countedTxs, entries.size(), trackedTxs, trackedTxs + untrackedTxs, mapMemPoolTxs.size(),
+        MaxUsableEstimate(), HistoricalBlockSpan() > BlockSpan() ? "historical" : "current");
 
     trackedTxs = 0;
     untrackedTxs = 0;
@@ -663,7 +542,6 @@ void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
 
 CFeeRate CBlockPolicyEstimator::estimateFee(int confTarget) const
 {
-    // It's not possible to get reasonable estimates for confTarget of 1
     if (confTarget <= 1)
         return CFeeRate(0);
 
@@ -694,7 +572,7 @@ CFeeRate CBlockPolicyEstimator::estimateRawFee(int confTarget, double successThr
     }
 
     LOCK(cs_feeEstimator);
-    // Return failure if trying to analyze a target we're not tracking
+
     if (confTarget <= 0 || (unsigned int)confTarget > stats->GetMaxConfirms())
         return CFeeRate(0);
     if (successThreshold > 1)
@@ -746,31 +624,23 @@ unsigned int CBlockPolicyEstimator::HistoricalBlockSpan() const
 
 unsigned int CBlockPolicyEstimator::MaxUsableEstimate() const
 {
-    // Block spans are divided by 2 to make sure there are enough potential failing data points for the estimate
     return std::min(longStats->GetMaxConfirms(), std::max(BlockSpan(), HistoricalBlockSpan()) / 2);
 }
 
-/** Return a fee estimate at the required successThreshold from the shortest
- * time horizon which tracks confirmations up to the desired target.  If
- * checkShorterHorizon is requested, also allow short time horizon estimates
- * for a lower target to reduce the given answer */
-double CBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const
+double CBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult* result) const
 {
     double estimate = -1;
     if (confTarget >= 1 && confTarget <= longStats->GetMaxConfirms()) {
-        // Find estimate from shortest time horizon possible
-        if (confTarget <= shortStats->GetMaxConfirms()) { // short horizon
+        if (confTarget <= shortStats->GetMaxConfirms()) {
             estimate = shortStats->EstimateMedianVal(confTarget, SUFFICIENT_TXS_SHORT, successThreshold, true, nBestSeenHeight, result);
-        }
-        else if (confTarget <= feeStats->GetMaxConfirms()) { // medium horizon
+        } else if (confTarget <= feeStats->GetMaxConfirms()) {
             estimate = feeStats->EstimateMedianVal(confTarget, SUFFICIENT_FEETXS, successThreshold, true, nBestSeenHeight, result);
-        }
-        else { // long horizon
+        } else {
             estimate = longStats->EstimateMedianVal(confTarget, SUFFICIENT_FEETXS, successThreshold, true, nBestSeenHeight, result);
         }
         if (checkShorterHorizon) {
             EstimationResult tempResult;
-            // If a lower confTarget from a more recent horizon returns a lower answer use it.
+
             if (confTarget > feeStats->GetMaxConfirms()) {
                 double medMax = feeStats->EstimateMedianVal(feeStats->GetMaxConfirms(), SUFFICIENT_FEETXS, successThreshold, true, nBestSeenHeight, &tempResult);
                 if (medMax > 0 && (estimate == -1 || medMax < estimate)) {
@@ -790,10 +660,7 @@ double CBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, doubl
     return estimate;
 }
 
-/** Ensure that for a conservative estimate, the DOUBLE_SUCCESS_PCT is also met
- * at 2 * target for any longer time horizons.
- */
-double CBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarget, EstimationResult *result) const
+double CBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarget, EstimationResult* result) const
 {
     double estimate = -1;
     EstimationResult tempResult;
@@ -810,14 +677,7 @@ double CBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarget,
     return estimate;
 }
 
-/** estimateSmartFee returns the max of the feerates calculated with a 60%
- * threshold required at target / 2, an 85% threshold required at target and a
- * 95% threshold required at 2 * target.  Each calculation is performed at the
- * shortest time horizon which tracks the required target.  Conservative
- * estimates, however, required the 95% threshold at 2 * target be met for any
- * longer time horizons also.
- */
-CFeeRate CBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const
+CFeeRate CBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation* feeCalc, bool conservative) const
 {
     LOCK(cs_feeEstimator);
 
@@ -829,12 +689,10 @@ CFeeRate CBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation 
     double median = -1;
     EstimationResult tempResult;
 
-    // Return failure if trying to analyze a target we're not tracking
     if (confTarget <= 0 || (unsigned int)confTarget > longStats->GetMaxConfirms()) {
-        return CFeeRate(0);  // error condition
+        return CFeeRate(0);
     }
 
-    // It's not possible to get reasonable estimates for confTarget of 1
     if (confTarget == 1) confTarget = 2;
 
     unsigned int maxUsableEstimate = MaxUsableEstimate();
@@ -843,20 +701,11 @@ CFeeRate CBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation 
     }
     if (feeCalc) feeCalc->returnedTarget = confTarget;
 
-    if (confTarget <= 1) return CFeeRate(0); // error condition
+    if (confTarget <= 1) return CFeeRate(0);
 
-    assert(confTarget > 0); //estimateCombinedFee and estimateConservativeFee take unsigned ints
-    /** true is passed to estimateCombined fee for target/2 and target so
-     * that we check the max confirms for shorter time horizons as well.
-     * This is necessary to preserve monotonically increasing estimates.
-     * For non-conservative estimates we do the same thing for 2*target, but
-     * for conservative estimates we want to skip these shorter horizons
-     * checks for 2*target because we are taking the max over all time
-     * horizons so we already have monotonically increasing estimates and
-     * the purpose of conservative estimates is not to let short term
-     * fluctuations lower our estimates by too much.
-     */
-    double halfEst = estimateCombinedFee(confTarget/2, HALF_SUCCESS_PCT, true, &tempResult);
+    assert(confTarget > 0);
+
+    double halfEst = estimateCombinedFee(confTarget / 2, HALF_SUCCESS_PCT, true, &tempResult);
     if (feeCalc) {
         feeCalc->est = tempResult;
         feeCalc->reason = FeeReason::HALF_ESTIMATE;
@@ -880,7 +729,7 @@ CFeeRate CBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation 
     }
 
     if (conservative || median == -1) {
-        double consEst =  estimateConservativeFee(2 * confTarget, &tempResult);
+        double consEst = estimateConservativeFee(2 * confTarget, &tempResult);
         if (consEst > median) {
             median = consEst;
             if (feeCalc) {
@@ -890,31 +739,30 @@ CFeeRate CBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation 
         }
     }
 
-    if (median < 0) return CFeeRate(0); // error condition
+    if (median < 0) return CFeeRate(0);
 
     return CFeeRate(llround(median));
 }
-
 
 bool CBlockPolicyEstimator::Write(CAutoFile& fileout) const
 {
     try {
         LOCK(cs_feeEstimator);
-        fileout << 149900; // version required to read: 0.14.99 or later
-        fileout << CLIENT_VERSION; // version that wrote the file
+        fileout << 149900;
+
+        fileout << CLIENT_VERSION;
+
         fileout << nBestSeenHeight;
-        if (BlockSpan() > HistoricalBlockSpan()/2) {
+        if (BlockSpan() > HistoricalBlockSpan() / 2) {
             fileout << firstRecordedHeight << nBestSeenHeight;
-        }
-        else {
+        } else {
             fileout << historicalFirst << historicalBest;
         }
         fileout << buckets;
         feeStats->Write(fileout);
         shortStats->Write(fileout);
         longStats->Write(fileout);
-    }
-    catch (const std::exception&) {
+    } catch (const std::exception&) {
         LogPrintf("CBlockPolicyEstimator::Write(): unable to write policy estimator data (non-fatal)\n");
         return false;
     }
@@ -930,14 +778,12 @@ bool CBlockPolicyEstimator::Read(CAutoFile& filein)
         if (nVersionRequired > CLIENT_VERSION)
             return error("CBlockPolicyEstimator::Read(): up-version (%d) fee estimate file", nVersionRequired);
 
-        // Read fee estimates file into temporary variables so existing data
-        // structures aren't corrupted if there is an exception.
         unsigned int nFileBestSeenHeight;
         filein >> nFileBestSeenHeight;
 
         if (nVersionRequired < 149900) {
             LogPrintf("%s: incompatible old fee estimation data (non-fatal). Version: %d\n", __func__, nVersionRequired);
-        } else { // New format introduced in 149900
+        } else {
             unsigned int nFileHistoricalFirst, nFileHistoricalBest;
             filein >> nFileHistoricalFirst >> nFileHistoricalBest;
             if (nFileHistoricalFirst > nFileHistoricalBest || nFileHistoricalBest > nFileBestSeenHeight) {
@@ -956,15 +802,12 @@ bool CBlockPolicyEstimator::Read(CAutoFile& filein)
             fileShortStats->Read(filein, nVersionThatWrote, numBuckets);
             fileLongStats->Read(filein, nVersionThatWrote, numBuckets);
 
-            // Fee estimates file parsed correctly
-            // Copy buckets from file and refresh our bucketmap
             buckets = fileBuckets;
             bucketMap.clear();
             for (unsigned int i = 0; i < buckets.size(); i++) {
                 bucketMap[buckets[i]] = i;
             }
 
-            // Destroy old TxConfirmStats and point to new ones that already reference buckets and bucketMap
             feeStats = std::move(fileFeeStats);
             shortStats = std::move(fileShortStats);
             longStats = std::move(fileLongStats);
@@ -973,15 +816,15 @@ bool CBlockPolicyEstimator::Read(CAutoFile& filein)
             historicalFirst = nFileHistoricalFirst;
             historicalBest = nFileHistoricalBest;
         }
-    }
-    catch (const std::exception& e) {
-        LogPrintf("CBlockPolicyEstimator::Read(): unable to read policy estimator data (non-fatal): %s\n",e.what());
+    } catch (const std::exception& e) {
+        LogPrintf("CBlockPolicyEstimator::Read(): unable to read policy estimator data (non-fatal): %s\n", e.what());
         return false;
     }
     return true;
 }
 
-void CBlockPolicyEstimator::FlushUnconfirmed(CTxMemPool& pool) {
+void CBlockPolicyEstimator::FlushUnconfirmed(CTxMemPool& pool)
+{
     int64_t startclear = GetTimeMicros();
     std::vector<uint256> txids;
     pool.queryHashes(txids);
@@ -990,7 +833,7 @@ void CBlockPolicyEstimator::FlushUnconfirmed(CTxMemPool& pool) {
         removeTx(txid, false);
     }
     int64_t endclear = GetTimeMicros();
-    LogPrint(BCLog::ESTIMATEFEE, "Recorded %u unconfirmed txs from mempool in %gs\n",txids.size(), (endclear - startclear)*0.000001);
+    LogPrint(BCLog::ESTIMATEFEE, "Recorded %u unconfirmed txs from mempool in %gs\n", txids.size(), (endclear - startclear) * 0.000001);
 }
 
 FeeFilterRounder::FeeFilterRounder(const CFeeRate& minIncrementalFee)

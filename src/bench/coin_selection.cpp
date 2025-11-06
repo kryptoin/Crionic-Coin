@@ -13,23 +13,17 @@ static void addCoin(const CAmount& nValue, const CWallet& wallet, std::vector<CO
 
     static int nextLockTime = 0;
     CMutableTransaction tx;
-    tx.nLockTime = nextLockTime++; // so all transactions get different hashes
+    tx.nLockTime = nextLockTime++;
+
     tx.vout.resize(nInput + 1);
     tx.vout[nInput].nValue = nValue;
     CWalletTx* wtx = new CWalletTx(&wallet, MakeTransactionRef(std::move(tx)));
 
     int nAge = 6 * 24;
-    COutput output(wtx, nInput, nAge, true /* spendable */, true /* solvable */, true /* safe */);
+    COutput output(wtx, nInput, nAge, true, true, true);
     vCoins.push_back(output);
 }
 
-// Simple benchmark for wallet coin selection. Note that it maybe be necessary
-// to build up more complicated scenarios in order to get meaningful
-// measurements of performance. From laanwj, "Wallet coin selection is probably
-// the hardest, as you need a wider selection of scenarios, just testing the
-// same one over and over isn't too useful. Generating random isn't useful
-// either for measurements."
-// (https://github.com/bitcoin/bitcoin/issues/7883#issuecomment-224807484)
 static void CoinSelection(benchmark::State& state)
 {
     const CWallet wallet;
@@ -37,12 +31,10 @@ static void CoinSelection(benchmark::State& state)
     LOCK(wallet.cs_wallet);
 
     while (state.KeepRunning()) {
-        // Empty wallet.
         for (COutput output : vCoins)
             delete output.tx;
         vCoins.clear();
 
-        // Add coins.
         for (int i = 0; i < 1000; i++)
             addCoin(1000 * COIN, wallet, vCoins);
         addCoin(3 * COIN, wallet, vCoins);

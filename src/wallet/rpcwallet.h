@@ -13,22 +13,16 @@ class JSONRPCRequest;
 
 struct BeePopGraphPoint;
 
-extern BeePopGraphPoint beePopGraph[1024*40];       // Crionic: Hive
+extern BeePopGraphPoint beePopGraph[1024 * 40];
 
-void RegisterWalletRPCCommands(CRPCTable &t);
+void RegisterWalletRPCCommands(CRPCTable& t);
 
-/**
- * Figures out what wallet, if any, to use for a JSONRPCRequest.
- *
- * @param[in] request JSONRPCRequest that wishes to access a wallet
- * @return nullptr if no wallet should be used, or a pointer to the CWallet
- */
-CWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request);
+CWallet* GetWalletForJSONRPCRequest(const JSONRPCRequest& request);
 
-CWallet *GetWalletForQTKeyImport();     // Crionic: Key import helper
+CWallet* GetWalletForQTKeyImport();
 
-std::string HelpRequiringPassphrase(CWallet *);
-void EnsureWalletIsUnlocked(CWallet *);
-bool EnsureWalletIsAvailable(CWallet *, bool avoidException);
+std::string HelpRequiringPassphrase(CWallet*);
+void EnsureWalletIsUnlocked(CWallet*);
+bool EnsureWalletIsAvailable(CWallet*, bool avoidException);
 
-#endif //BITCOIN_WALLET_RPCWALLET_H
+#endif

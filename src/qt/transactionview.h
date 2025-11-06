@@ -7,8 +7,8 @@
 
 #include <qt/guiutil.h>
 
-#include <QWidget>
 #include <QKeyEvent>
+#include <QWidget>
 
 class PlatformStyle;
 class TransactionFilterProxy;
@@ -25,21 +25,16 @@ class QSignalMapper;
 class QTableView;
 QT_END_NAMESPACE
 
-/** Widget showing the transaction list for a wallet, including a filter row.
-    Using the filter row, the user can view or export a subset of the transactions.
-  */
 class TransactionView : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit TransactionView(const PlatformStyle *platformStyle, QWidget *parent = 0);
+    explicit TransactionView(const PlatformStyle* platformStyle, QWidget* parent = 0);
 
-    void setModel(WalletModel *model);
+    void setModel(WalletModel* model);
 
-    // Date ranges for filter
-    enum DateEnum
-    {
+    enum DateEnum {
         All,
         Today,
         ThisWeek,
@@ -59,35 +54,35 @@ public:
     };
 
 private:
-    WalletModel *model;
-    TransactionFilterProxy *transactionProxyModel;
-    QTableView *transactionView;
+    WalletModel* model;
+    TransactionFilterProxy* transactionProxyModel;
+    QTableView* transactionView;
 
-    QComboBox *dateWidget;
-    QComboBox *typeWidget;
-    QComboBox *watchOnlyWidget;
-    QLineEdit *search_widget;
-    QLineEdit *amountWidget;
+    QComboBox* dateWidget;
+    QComboBox* typeWidget;
+    QComboBox* watchOnlyWidget;
+    QLineEdit* search_widget;
+    QLineEdit* amountWidget;
 
-    QMenu *contextMenu;
-    QSignalMapper *mapperThirdPartyTxUrls;
+    QMenu* contextMenu;
+    QSignalMapper* mapperThirdPartyTxUrls;
 
-    QFrame *dateRangeWidget;
-    QDateTimeEdit *dateFrom;
-    QDateTimeEdit *dateTo;
-    QAction *abandonAction;
-    QAction *bumpFeeAction;
+    QFrame* dateRangeWidget;
+    QDateTimeEdit* dateFrom;
+    QDateTimeEdit* dateTo;
+    QAction* abandonAction;
+    QAction* bumpFeeAction;
 
-    QWidget *createDateRangeWidget();
+    QWidget* createDateRangeWidget();
 
-    GUIUtil::TableViewLastColumnResizingFixer *columnResizingFixer;
+    GUIUtil::TableViewLastColumnResizingFixer* columnResizingFixer;
 
     virtual void resizeEvent(QResizeEvent* event);
 
-    bool eventFilter(QObject *obj, QEvent *event);
+    bool eventFilter(QObject* obj, QEvent* event);
 
 private Q_SLOTS:
-    void contextualMenu(const QPoint &);
+    void contextualMenu(const QPoint&);
     void dateRangeChanged();
     void showDetails();
     void copyAddress();
@@ -105,8 +100,7 @@ private Q_SLOTS:
 Q_SIGNALS:
     void doubleClicked(const QModelIndex&);
 
-    /**  Fired when a message should be reported to the user */
-    void message(const QString &title, const QString &message, unsigned int style);
+    void message(const QString& title, const QString& message, unsigned int style);
 
 public Q_SLOTS:
     void chooseDate(int idx);
@@ -116,7 +110,6 @@ public Q_SLOTS:
     void changedSearch();
     void exportClicked();
     void focusTransaction(const QModelIndex&);
-
 };
 
-#endif // BITCOIN_QT_TRANSACTIONVIEW_H
+#endif

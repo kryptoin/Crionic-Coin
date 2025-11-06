@@ -9,29 +9,28 @@
 #include <wallet/wallet.h>
 
 #include <QAbstractTableModel>
-#include <QStringList>
 #include <QDateTime>
+#include <QStringList>
 
 class CWallet;
 
 class CBeeCreationTransactionInfoLessThan
 {
 public:
-    CBeeCreationTransactionInfoLessThan(int nColumn, Qt::SortOrder fOrder):
-        column(nColumn), order(fOrder) {}
-    bool operator()(CBeeCreationTransactionInfo &left, CBeeCreationTransactionInfo &right) const;
-    
+    CBeeCreationTransactionInfoLessThan(int nColumn, Qt::SortOrder fOrder) : column(nColumn), order(fOrder) {}
+    bool operator()(CBeeCreationTransactionInfo& left, CBeeCreationTransactionInfo& right) const;
+
 private:
     int column;
     Qt::SortOrder order;
 };
 
-class HiveTableModel: public QAbstractTableModel
+class HiveTableModel : public QAbstractTableModel
 {
     Q_OBJECT
 
 public:
-    explicit HiveTableModel(const PlatformStyle *_platformStyle, CWallet *wallet, WalletModel *parent);
+    explicit HiveTableModel(const PlatformStyle* _platformStyle, CWallet* wallet, WalletModel* parent);
     ~HiveTableModel();
 
     enum ColumnIndex {
@@ -45,13 +44,12 @@ public:
     };
 
     void updateBCTs(bool includeDeadBees);
-    void getSummaryValues(int &_immature, int &_mature, int &_dead, int &_blocksFound, CAmount &_cost, CAmount &_rewardsPaid, CAmount &_profit);
+    void getSummaryValues(int& _immature, int& _mature, int& _dead, int& _blocksFound, CAmount& _cost, CAmount& _rewardsPaid, CAmount& _profit);
 
-    // Stuff overridden from QAbstractTableModel
-    int rowCount(const QModelIndex &parent) const;
-    int columnCount(const QModelIndex &parent) const;
-    QVariant data(const QModelIndex &index, int role) const;
-    bool setData(const QModelIndex &index, const QVariant &value, int role);
+    int rowCount(const QModelIndex& parent) const;
+    int columnCount(const QModelIndex& parent) const;
+    QVariant data(const QModelIndex& index, int role) const;
+    bool setData(const QModelIndex& index, const QVariant& value, int role);
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
 
 public Q_SLOTS:
@@ -59,10 +57,10 @@ public Q_SLOTS:
 
 private:
     static QString secondsToString(qint64 seconds);
-    void addBCT(const CBeeCreationTransactionInfo &bct);
+    void addBCT(const CBeeCreationTransactionInfo& bct);
 
-    const PlatformStyle *platformStyle;
-    WalletModel *walletModel;
+    const PlatformStyle* platformStyle;
+    WalletModel* walletModel;
     QStringList columns;
     QList<CBeeCreationTransactionInfo> list;
     int sortColumn;
@@ -71,4 +69,4 @@ private:
     CAmount cost, rewardsPaid, profit;
 };
 
-#endif // BITCOIN_QT_HIVETABLEMODEL_H
+#endif

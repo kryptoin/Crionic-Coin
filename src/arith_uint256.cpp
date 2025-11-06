@@ -5,9 +5,9 @@
 
 #include <arith_uint256.h>
 
+#include <crypto/common.h>
 #include <uint256.h>
 #include <utilstrencodings.h>
-#include <crypto/common.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +15,7 @@
 template <unsigned int BITS>
 base_uint<BITS>::base_uint(const std::string& str)
 {
-    static_assert(BITS/32 > 0 && BITS%32 == 0, "Template parameter BITS must be a positive multiple of 32.");
+    static_assert(BITS / 32 > 0 && BITS % 32 == 0, "Template parameter BITS must be a positive multiple of 32.");
 
     SetHex(str);
 }
@@ -85,26 +85,32 @@ base_uint<BITS>& base_uint<BITS>::operator*=(const base_uint& b)
 template <unsigned int BITS>
 base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint& b)
 {
-    base_uint<BITS> div = b;     // make a copy, so we can shift.
-    base_uint<BITS> num = *this; // make a copy, so we can subtract.
-    *this = 0;                   // the quotient.
+    base_uint<BITS> div = b;
+
+    base_uint<BITS> num = *this;
+
+    *this = 0;
+
     int num_bits = num.bits();
     int div_bits = div.bits();
     if (div_bits == 0)
         throw uint_error("Division by zero");
-    if (div_bits > num_bits) // the result is certainly 0.
+    if (div_bits > num_bits)
+
         return *this;
     int shift = num_bits - div_bits;
-    div <<= shift; // shift so that div and num align.
+    div <<= shift;
+
     while (shift >= 0) {
         if (num >= div) {
             num -= div;
-            pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+            pn[shift / 32] |= (1 << (shift & 31));
         }
-        div >>= 1; // shift back.
+        div >>= 1;
+
         shift--;
     }
-    // num now contains the remainder of the division.
+
     return *this;
 }
 
@@ -185,7 +191,6 @@ unsigned int base_uint<BITS>::bits() const
     return 0;
 }
 
-// Explicit instantiations for base_uint<256>
 template base_uint<256>::base_uint(const std::string&);
 template base_uint<256>& base_uint<256>::operator<<=(unsigned int);
 template base_uint<256>& base_uint<256>::operator>>=(unsigned int);
@@ -201,8 +206,6 @@ template void base_uint<256>::SetHex(const char*);
 template void base_uint<256>::SetHex(const std::string&);
 template unsigned int base_uint<256>::bits() const;
 
-// This implementation directly uses shifts instead of going
-// through an intermediate MPI representation.
 arith_uint256& arith_uint256::SetCompact(uint32_t nCompact, bool* pfNegative, bool* pfOverflow)
 {
     int nSize = nCompact >> 24;
@@ -218,8 +221,8 @@ arith_uint256& arith_uint256::SetCompact(uint32_t nCompact, bool* pfNegative, bo
         *pfNegative = nWord != 0 && (nCompact & 0x00800000) != 0;
     if (pfOverflow)
         *pfOverflow = nWord != 0 && ((nSize > 34) ||
-                                     (nWord > 0xff && nSize > 33) ||
-                                     (nWord > 0xffff && nSize > 32));
+                                        (nWord > 0xff && nSize > 33) ||
+                                        (nWord > 0xffff && nSize > 32));
     return *this;
 }
 
@@ -233,8 +236,7 @@ uint32_t arith_uint256::GetCompact(bool fNegative) const
         arith_uint256 bn = *this >> 8 * (nSize - 3);
         nCompact = bn.GetLow64();
     }
-    // The 0x00800000 bit denotes the sign.
-    // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
+
     if (nCompact & 0x00800000) {
         nCompact >>= 8;
         nSize++;
@@ -246,17 +248,17 @@ uint32_t arith_uint256::GetCompact(bool fNegative) const
     return nCompact;
 }
 
-uint256 ArithToUint256(const arith_uint256 &a)
+uint256 ArithToUint256(const arith_uint256& a)
 {
     uint256 b;
-    for(int x=0; x<a.WIDTH; ++x)
-        WriteLE32(b.begin() + x*4, a.pn[x]);
+    for (int x = 0; x < a.WIDTH; ++x)
+        WriteLE32(b.begin() + x * 4, a.pn[x]);
     return b;
 }
-arith_uint256 UintToArith256(const uint256 &a)
+arith_uint256 UintToArith256(const uint256& a)
 {
     arith_uint256 b;
-    for(int x=0; x<b.WIDTH; ++x)
-        b.pn[x] = ReadLE32(a.begin() + x*4);
+    for (int x = 0; x < b.WIDTH; ++x)
+        b.pn[x] = ReadLE32(a.begin() + x * 4);
     return b;
 }

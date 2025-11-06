@@ -5,7 +5,8 @@
 #ifndef BITCOIN_QT_PEERTABLEMODEL_H
 #define BITCOIN_QT_PEERTABLEMODEL_H
 
-#include <net_processing.h> // For CNodeStateStats
+#include <net_processing.h>
+
 #include <net.h>
 
 #include <QAbstractTableModel>
@@ -27,27 +28,22 @@ struct CNodeCombinedStats {
 class NodeLessThan
 {
 public:
-    NodeLessThan(int nColumn, Qt::SortOrder fOrder) :
-        column(nColumn), order(fOrder) {}
-    bool operator()(const CNodeCombinedStats &left, const CNodeCombinedStats &right) const;
+    NodeLessThan(int nColumn, Qt::SortOrder fOrder) : column(nColumn), order(fOrder) {}
+    bool operator()(const CNodeCombinedStats& left, const CNodeCombinedStats& right) const;
 
 private:
     int column;
     Qt::SortOrder order;
 };
 
-/**
-   Qt model providing information about connected peers, similar to the
-   "getpeerinfo" RPC call. Used by the rpc console UI.
- */
 class PeerTableModel : public QAbstractTableModel
 {
     Q_OBJECT
 
 public:
-    explicit PeerTableModel(ClientModel *parent = 0);
+    explicit PeerTableModel(ClientModel* parent = 0);
     ~PeerTableModel();
-    const CNodeCombinedStats *getNodeStats(int idx);
+    const CNodeCombinedStats* getNodeStats(int idx);
     int getRowByNodeId(NodeId nodeid);
     void startAutoRefresh();
     void stopAutoRefresh();
@@ -61,25 +57,22 @@ public:
         Subversion = 5
     };
 
-    /** @name Methods overridden from QAbstractTableModel
-        @{*/
-    int rowCount(const QModelIndex &parent) const;
-    int columnCount(const QModelIndex &parent) const;
-    QVariant data(const QModelIndex &index, int role) const;
+    int rowCount(const QModelIndex& parent) const;
+    int columnCount(const QModelIndex& parent) const;
+    QVariant data(const QModelIndex& index, int role) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
-    QModelIndex index(int row, int column, const QModelIndex &parent) const;
-    Qt::ItemFlags flags(const QModelIndex &index) const;
+    QModelIndex index(int row, int column, const QModelIndex& parent) const;
+    Qt::ItemFlags flags(const QModelIndex& index) const;
     void sort(int column, Qt::SortOrder order);
-    /*@}*/
 
 public Q_SLOTS:
     void refresh();
 
 private:
-    ClientModel *clientModel;
+    ClientModel* clientModel;
     QStringList columns;
     std::unique_ptr<PeerTablePriv> priv;
-    QTimer *timer;
+    QTimer* timer;
 };
 
-#endif // BITCOIN_QT_PEERTABLEMODEL_H
+#endif

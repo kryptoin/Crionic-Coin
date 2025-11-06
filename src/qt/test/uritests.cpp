@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+
 #include <qt/test/uritests.h>
 
 #include <qt/guiutil.h>
@@ -51,7 +52,8 @@ void URITests::uriTests()
     QVERIFY(rv.address == QString("Cc5zbCCUULHAq6Uo7riehHZeELKNUqdR9n"));
     QVERIFY(rv.label == QString());
 
-    QVERIFY(GUIUtil::parseBitcoinURI("crionic://Cc5zbCCUULHAq6Uo7riehHZeELKNUqdR9n?message=Wikipedia Example Address", &rv));
+    QVERIFY(GUIUtil::parseBitcoinURI("crionic:
+
     QVERIFY(rv.address == QString("Cc5zbCCUULHAq6Uo7riehHZeELKNUqdR9n"));
     QVERIFY(rv.label == QString());
 

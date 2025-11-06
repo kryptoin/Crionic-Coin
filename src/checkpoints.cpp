@@ -11,21 +11,19 @@
 
 #include <stdint.h>
 
+namespace Checkpoints
+{
+CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
+{
+    const MapCheckpoints& checkpoints = data.mapCheckpoints;
 
-namespace Checkpoints {
-
-    CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
-    {
-        const MapCheckpoints& checkpoints = data.mapCheckpoints;
-
-        for (const MapCheckpoints::value_type& i : reverse_iterate(checkpoints))
-        {
-            const uint256& hash = i.second;
-            BlockMap::const_iterator t = mapBlockIndex.find(hash);
-            if (t != mapBlockIndex.end())
-                return t->second;
-        }
-        return nullptr;
+    for (const MapCheckpoints::value_type& i : reverse_iterate(checkpoints)) {
+        const uint256& hash = i.second;
+        BlockMap::const_iterator t = mapBlockIndex.find(hash);
+        if (t != mapBlockIndex.end())
+            return t->second;
     }
+    return nullptr;
+}
 
 } // namespace Checkpoints

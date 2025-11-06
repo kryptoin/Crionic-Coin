@@ -6,9 +6,9 @@
 
 #include <crypto/sha256.h>
 #include <key.h>
-#include <validation.h>
-#include <util.h>
 #include <random.h>
+#include <util.h>
+#include <validation.h>
 
 #include <boost/lexical_cast.hpp>
 
@@ -22,8 +22,7 @@ static const char* DEFAULT_PLOT_PLOTLYURL = "https://cdn.plot.ly/plotly-latest.m
 static const int64_t DEFAULT_PLOT_WIDTH = 1024;
 static const int64_t DEFAULT_PLOT_HEIGHT = 768;
 
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     gArgs.ParseParameters(argc, argv);
 
@@ -46,7 +45,7 @@ main(int argc, char** argv)
     RandomInit();
     ECC_Start();
     SetupEnvironment();
-    fPrintToDebugLog = false; // don't want to write to debug.log file
+    fPrintToDebugLog = false;
 
     int64_t evaluations = gArgs.GetArg("-evals", DEFAULT_BENCH_EVALUATIONS);
     std::string regex_filter = gArgs.GetArg("-filter", DEFAULT_BENCH_FILTER);
@@ -54,7 +53,6 @@ main(int argc, char** argv)
     bool is_list_only = gArgs.GetBoolArg("-list", false);
 
     double scaling_factor = boost::lexical_cast<double>(scaling_str);
-
 
     std::unique_ptr<benchmark::Printer> printer(new benchmark::ConsolePrinter());
     std::string printer_arg = gArgs.GetArg("-printer", DEFAULT_BENCH_PRINTER);

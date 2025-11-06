@@ -9,7 +9,7 @@
 
 BOOST_FIXTURE_TEST_SUITE(bech32_tests, BasicTestingSetup)
 
-bool CaseInsensitiveEqual(const std::string &s1, const std::string &s2)
+bool CaseInsensitiveEqual(const std::string& s1, const std::string& s2)
 {
     if (s1.size() != s2.size()) return false;
     for (size_t i = 0; i < s1.size(); ++i) {
@@ -46,8 +46,10 @@ BOOST_AUTO_TEST_CASE(bip173_testvectors_invalid)
 {
     static const std::string CASES[] = {
         " 1nwldj5",
-        "\x7f""1axkwrx",
-        "\x80""1eym55h",
+        "\x7f"
+        "1axkwrx",
+        "\x80"
+        "1eym55h",
         "an84characterslonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio1569pvx",
         "pzry9x0s0muk",
         "1pzry9x0s0muk",

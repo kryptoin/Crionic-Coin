@@ -6,26 +6,18 @@
 
 #include <base58.h>
 #include <consensus/consensus.h>
-#include <validation.h>
 #include <timedata.h>
+#include <validation.h>
 #include <wallet/wallet.h>
 
 #include <stdint.h>
 
-
-/* Return positive answer if transaction should be shown in list.
- */
-bool TransactionRecord::showTransaction(const CWalletTx &wtx)
+bool TransactionRecord::showTransaction(const CWalletTx& wtx)
 {
-    // There are currently no cases where we hide transactions, but
-    // we may want to use this in the future for things like RBF.
     return true;
 }
 
-/*
- * Decompose CWallet transaction to model transaction records.
- */
-QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx)
+QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* wallet, const CWalletTx& wtx)
 {
     QList<TransactionRecord> parts;
     int64_t nTime = wtx.GetTxTime();
@@ -35,122 +27,90 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
     uint256 hash = wtx.GetHash();
     std::map<std::string, std::string> mapValue = wtx.mapValue;
 
-    if (nNet > 0 || wtx.IsCoinBase())
-    {
-        //
-        // Credit
-        //
-        for(unsigned int i = 0; i < wtx.tx->vout.size(); i++)
-        {
+    if (nNet > 0 || wtx.IsCoinBase()) {
+        for (unsigned int i = 0; i < wtx.tx->vout.size(); i++) {
             const CTxOut& txout = wtx.tx->vout[i];
             isminetype mine = wallet->IsMine(txout);
-            if(mine)
-            {
+            if (mine) {
                 TransactionRecord sub(hash, nTime);
                 CTxDestination address;
-                sub.idx = i; // vout index
+                sub.idx = i;
+
                 sub.credit = txout.nValue;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
-                if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
-                {
-                    // Received by Bitcoin Address
+                if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address)) {
                     sub.type = TransactionRecord::RecvWithAddress;
                     sub.address = EncodeDestination(address);
-                }
-                else
-                {
-                    // Received by IP connection (deprecated features), or a multisignature or other non-simple transaction
+                } else {
                     sub.type = TransactionRecord::RecvFromOther;
                     sub.address = mapValue["from"];
                 }
-                if (wtx.IsCoinBase())
-                {
-                    // Crionic: Hive: Check for a Hivemined coinbase transaction
-                    if (wtx.IsHiveCoinBase())   // Hivemined
+                if (wtx.IsCoinBase()) {
+                    if (wtx.IsHiveCoinBase())
+
                         sub.type = TransactionRecord::HiveHoney;
-                    else // Generated
+                    else
+
                         sub.type = TransactionRecord::Generated;
                 }
 
                 parts.append(sub);
             }
         }
-    }
-    else
-    {
+    } else {
         bool involvesWatchAddress = false;
         isminetype fAllFromMe = ISMINE_SPENDABLE;
-        for (const CTxIn& txin : wtx.tx->vin)
-        {
+        for (const CTxIn& txin : wtx.tx->vin) {
             isminetype mine = wallet->IsMine(txin);
-            if(mine & ISMINE_WATCH_ONLY) involvesWatchAddress = true;
-            if(fAllFromMe > mine) fAllFromMe = mine;
+            if (mine & ISMINE_WATCH_ONLY) involvesWatchAddress = true;
+            if (fAllFromMe > mine) fAllFromMe = mine;
         }
 
         isminetype fAllToMe = ISMINE_SPENDABLE;
-        for (const CTxOut& txout : wtx.tx->vout)
-        {
+        for (const CTxOut& txout : wtx.tx->vout) {
             isminetype mine = wallet->IsMine(txout);
-            if(mine & ISMINE_WATCH_ONLY) involvesWatchAddress = true;
-            if(fAllToMe > mine) fAllToMe = mine;
+            if (mine & ISMINE_WATCH_ONLY) involvesWatchAddress = true;
+            if (fAllToMe > mine) fAllToMe = mine;
         }
 
-        if (fAllFromMe && fAllToMe)
-        {
-            // Payment to self
+        if (fAllFromMe && fAllToMe) {
             CAmount nChange = wtx.GetChange();
 
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::SendToSelf, "",
-                            -(nDebit - nChange), nCredit - nChange));
-            parts.last().involvesWatchAddress = involvesWatchAddress;   // maybe pass to TransactionRecord as constructor argument
-        }
-        else if (fAllFromMe)
-        {
-            //
-            // Debit
-            //
+                -(nDebit - nChange), nCredit - nChange));
+            parts.last().involvesWatchAddress = involvesWatchAddress;
+
+        } else if (fAllFromMe) {
             CAmount nTxFee = nDebit - wtx.tx->GetValueOut();
 
-            for (unsigned int nOut = 0; nOut < wtx.tx->vout.size(); nOut++)
-            {
+            for (unsigned int nOut = 0; nOut < wtx.tx->vout.size(); nOut++) {
                 const CTxOut& txout = wtx.tx->vout[nOut];
                 TransactionRecord sub(hash, nTime);
                 sub.idx = nOut;
                 sub.involvesWatchAddress = involvesWatchAddress;
 
-                if(wallet->IsMine(txout))
-                {
-                    // Ignore parts sent to self, as this is usually the change
-                    // from a transaction sent back to our own address.
+                if (wallet->IsMine(txout)) {
                     continue;
                 }
 
                 CTxDestination address;
-                // Crionic: Hive: Check for a BCT
+
                 if (CScript::IsBCTScript(txout.scriptPubKey, GetScriptForDestination(DecodeDestination(Params().GetConsensus().beeCreationAddress)))) {
                     sub.type = TransactionRecord::HiveBeeCreation;
-                }
-                else if (ExtractDestination(txout.scriptPubKey, address))
-                {
-                    // Sent to Bitcoin Address
+                } else if (ExtractDestination(txout.scriptPubKey, address)) {
                     sub.type = TransactionRecord::SendToAddress;
                     sub.address = EncodeDestination(address);
 
-                    // Crionic: Hive: Check for additional hive-related send types
                     if ((sub.address == Params().GetConsensus().hiveCommunityAddress) || (sub.address == Params().GetConsensus().hiveCommunityAddress2))
                         sub.type = TransactionRecord::HiveCommunityFund;
-                }
-                else
-                {
-                    // Sent to IP, or other non-address transaction like OP_EVAL
+                } else {
                     sub.type = TransactionRecord::SendToOther;
                     sub.address = mapValue["to"];
                 }
 
                 CAmount nValue = txout.nValue;
-                /* Add fee to first output */
-                if (nTxFee > 0)
-                {
+
+                if (nTxFee > 0) {
                     nValue += nTxFee;
                     nTxFee = 0;
                 }
@@ -158,12 +118,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
 
                 parts.append(sub);
             }
-        }
-        else
-        {
-            //
-            // Mixed debit transaction, can't break down payees
-            //
+        } else {
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::Other, "", nNet, 0));
             parts.last().involvesWatchAddress = involvesWatchAddress;
         }
@@ -172,18 +127,15 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
     return parts;
 }
 
-void TransactionRecord::updateStatus(const CWalletTx &wtx)
+void TransactionRecord::updateStatus(const CWalletTx& wtx)
 {
     AssertLockHeld(cs_main);
-    // Determine transaction status
 
-    // Find the block the tx is in
     CBlockIndex* pindex = nullptr;
     BlockMap::iterator mi = mapBlockIndex.find(wtx.hashBlock);
     if (mi != mapBlockIndex.end())
         pindex = (*mi).second;
 
-    // Sort order, unrecorded transactions sort to the top
     status.sortKey = strprintf("%010d-%01d-%010u-%03d",
         (pindex ? pindex->nHeight : std::numeric_limits<int>::max()),
         (wtx.IsCoinBase() ? 1 : 0),
@@ -193,67 +145,43 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
     status.depth = wtx.GetDepthInMainChain();
     status.cur_num_blocks = chainActive.Height();
 
-    if (!CheckFinalTx(*wtx.tx))
-    {
-        if (wtx.tx->nLockTime < LOCKTIME_THRESHOLD)
-        {
+    if (!CheckFinalTx(*wtx.tx)) {
+        if (wtx.tx->nLockTime < LOCKTIME_THRESHOLD) {
             status.status = TransactionStatus::OpenUntilBlock;
             status.open_for = wtx.tx->nLockTime - chainActive.Height();
-        }
-        else
-        {
+        } else {
             status.status = TransactionStatus::OpenUntilDate;
             status.open_for = wtx.tx->nLockTime;
         }
     }
-    // For generated transactions, determine maturity
-    // Crionic: Hive: Do the same for hivemined transactions
-    else if(type == TransactionRecord::Generated || type == TransactionRecord::HiveHoney)
-    {
-        if (wtx.GetBlocksToMaturity() > 0)
-        {
+
+    else if (type == TransactionRecord::Generated || type == TransactionRecord::HiveHoney) {
+        if (wtx.GetBlocksToMaturity() > 0) {
             status.status = TransactionStatus::Immature;
 
-            if (wtx.IsInMainChain())
-            {
+            if (wtx.IsInMainChain()) {
                 status.matures_in = wtx.GetBlocksToMaturity();
 
-                // Check if the block was requested by anyone
                 if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
                     status.status = TransactionStatus::MaturesWarning;
-            }
-            else
-            {
+            } else {
                 status.status = TransactionStatus::NotAccepted;
             }
-        }
-        else
-        {
+        } else {
             status.status = TransactionStatus::Confirmed;
         }
-    }
-    else
-    {
-        if (status.depth < 0)
-        {
+    } else {
+        if (status.depth < 0) {
             status.status = TransactionStatus::Conflicted;
-        }
-        else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
-        {
+        } else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0) {
             status.status = TransactionStatus::Offline;
-        }
-        else if (status.depth == 0)
-        {
+        } else if (status.depth == 0) {
             status.status = TransactionStatus::Unconfirmed;
             if (wtx.isAbandoned())
                 status.status = TransactionStatus::Abandoned;
-        }
-        else if (status.depth < RecommendedNumConfirmations)
-        {
+        } else if (status.depth < RecommendedNumConfirmations) {
             status.status = TransactionStatus::Confirming;
-        }
-        else
-        {
+        } else {
             status.status = TransactionStatus::Confirmed;
         }
     }

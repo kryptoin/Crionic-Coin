@@ -17,32 +17,29 @@
 #include <assert.h>
 #include <string.h>
 
-
-/** All alphanumeric characters except for "0", "I", "O", and "l" */
 static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
 bool DecodeBase58(const char* psz, std::vector<unsigned char>& vch)
 {
-    // Skip leading spaces.
     while (*psz && isspace(*psz))
         psz++;
-    // Skip and count leading '1's.
+
     int zeroes = 0;
     int length = 0;
     while (*psz == '1') {
         zeroes++;
         psz++;
     }
-    // Allocate enough space in big-endian base256 representation.
-    int size = strlen(psz) * 733 /1000 + 1; // log(58) / log(256), rounded up.
+
+    int size = strlen(psz) * 733 / 1000 + 1;
+
     std::vector<unsigned char> b256(size);
-    // Process the characters.
+
     while (*psz && !isspace(*psz)) {
-        // Decode base58 character
         const char* ch = strchr(pszBase58, *psz);
         if (ch == nullptr)
             return false;
-        // Apply "b256 = b256 * 58 + ch".
+
         int carry = ch - pszBase58;
         int i = 0;
         for (std::vector<unsigned char>::reverse_iterator it = b256.rbegin(); (carry != 0 || i < length) && (it != b256.rend()); ++it, ++i) {
@@ -54,16 +51,16 @@ bool DecodeBase58(const char* psz, std::vector<unsigned char>& vch)
         length = i;
         psz++;
     }
-    // Skip trailing spaces.
+
     while (isspace(*psz))
         psz++;
     if (*psz != 0)
         return false;
-    // Skip leading zeroes in b256.
+
     std::vector<unsigned char>::iterator it = b256.begin() + (size - length);
     while (it != b256.end() && *it == 0)
         it++;
-    // Copy result into output vector.
+
     vch.reserve(zeroes + (b256.end() - it));
     vch.assign(zeroes, 0x00);
     while (it != b256.end())
@@ -73,21 +70,21 @@ bool DecodeBase58(const char* psz, std::vector<unsigned char>& vch)
 
 std::string EncodeBase58(const unsigned char* pbegin, const unsigned char* pend)
 {
-    // Skip & count leading zeroes.
     int zeroes = 0;
     int length = 0;
     while (pbegin != pend && *pbegin == 0) {
         pbegin++;
         zeroes++;
     }
-    // Allocate enough space in big-endian base58 representation.
-    int size = (pend - pbegin) * 138 / 100 + 1; // log(256) / log(58), rounded up.
+
+    int size = (pend - pbegin) * 138 / 100 + 1;
+
     std::vector<unsigned char> b58(size);
-    // Process the bytes.
+
     while (pbegin != pend) {
         int carry = *pbegin;
         int i = 0;
-        // Apply "b58 = b58 * 256 + ch".
+
         for (std::vector<unsigned char>::reverse_iterator it = b58.rbegin(); (carry != 0 || i < length) && (it != b58.rend()); it++, i++) {
             carry += 256 * (*it);
             *it = carry % 58;
@@ -98,11 +95,11 @@ std::string EncodeBase58(const unsigned char* pbegin, const unsigned char* pend)
         length = i;
         pbegin++;
     }
-    // Skip leading zeroes in base58 result.
+
     std::vector<unsigned char>::iterator it = b58.begin() + (size - length);
     while (it != b58.end() && *it == 0)
         it++;
-    // Translate the result into a string.
+
     std::string str;
     str.reserve(zeroes + (b58.end() - it));
     str.assign(zeroes, '1');
@@ -123,7 +120,6 @@ bool DecodeBase58(const std::string& str, std::vector<unsigned char>& vchRet)
 
 std::string EncodeBase58Check(const std::vector<unsigned char>& vchIn)
 {
-    // add 4-byte hash check to the end
     std::vector<unsigned char> vch(vchIn);
     uint256 hash = Hash(vch.begin(), vch.end());
     vch.insert(vch.end(), (unsigned char*)&hash, (unsigned char*)&hash + 4);
@@ -137,7 +133,7 @@ bool DecodeBase58Check(const char* psz, std::vector<unsigned char>& vchRet)
         vchRet.clear();
         return false;
     }
-    // re-calculate the checksum, ensure it matches the included 4-byte checksum
+
     uint256 hash = Hash(vchRet.begin(), vchRet.end() - 4);
     if (memcmp(&hash, &vchRet[vchRet.size() - 4], 4) != 0) {
         vchRet.clear();
@@ -269,24 +265,18 @@ CTxDestination DecodeDestination(const std::string& str, const CChainParams& par
     std::vector<unsigned char> data;
     uint160 hash;
     if (DecodeBase58Check(str, data)) {
-        // base58-encoded Bitcoin addresses.
-        // Public-key-hash-addresses have version 0 (or 111 testnet).
-        // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
         const std::vector<unsigned char>& pubkey_prefix = params.Base58Prefix(CChainParams::PUBKEY_ADDRESS);
         if (data.size() == hash.size() + pubkey_prefix.size() && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin())) {
             std::copy(data.begin() + pubkey_prefix.size(), data.end(), hash.begin());
             return CKeyID(hash);
         }
-        // Script-hash-addresses have version 5 for 3 prefix (or 196 testnet).
-        // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
+
         const std::vector<unsigned char>& script_prefix = params.Base58Prefix(CChainParams::SCRIPT_ADDRESS);
         if (data.size() == hash.size() + script_prefix.size() && std::equal(script_prefix.begin(), script_prefix.end(), data.begin())) {
             std::copy(data.begin() + script_prefix.size(), data.end(), hash.begin());
             return CScriptID(hash);
         }
 
-        // Script-hash-addresses have version 5 for M prefix (or 196 testnet).
-        // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
         const std::vector<unsigned char>& script_prefix2 = params.Base58Prefix(CChainParams::SCRIPT_ADDRESS2);
         if (data.size() == hash.size() + script_prefix2.size() && std::equal(script_prefix2.begin(), script_prefix2.end(), data.begin())) {
             std::copy(data.begin() + script_prefix2.size(), data.end(), hash.begin());
@@ -296,9 +286,8 @@ CTxDestination DecodeDestination(const std::string& str, const CChainParams& par
     data.clear();
     auto bech = bech32::Decode(str);
     if (bech.second.size() > 0 && bech.first == params.Bech32HRP()) {
-        // Bech32 decoding
-        int version = bech.second[0]; // The first 5 bit symbol is the witness version (0-16)
-        // The rest of the symbols are converted witness program bytes.
+        int version = bech.second[0];
+
         if (ConvertBits<5, 8, false>(data, bech.second.begin() + 1, bech.second.end())) {
             if (version == 0) {
                 {
