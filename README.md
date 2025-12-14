@@ -14,16 +14,7 @@ Compiled binary releases are available here on Github.
 
 Crionic Core is the full node software that makes up the backbone of the Crionic p2p network.
 
-{
-  "height": 4252828,
-  "bestblock": "fa7f7c66b8a87982508c46db8623b6a9ec213c059bdc840c0cf4533a66a18530",
-  "transactions": 640522,
-  "txouts": 836032,
-  "bogosize": 62075450,
-  "hash_serialized_2": "91c15a2349c1407be454c09749a0f842c87aa25e5f6e667b9ba7b2a87a789645",
-  "disk_size": 67913158,
-  "total_amount": 172414056.80000000
-}
+
 
 Crionic Characteristics
 ---------------------------------------------------------------------------
@@ -114,3 +105,8 @@ Translations
 ------------
 
 Any translation corrections or expansions are welcomed as GitHub pull requests.
+
+Exchanges
+---------
+
+https://flexex.io/market/CRNC_USDT

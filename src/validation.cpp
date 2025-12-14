@@ -2654,10 +2654,10 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationSta
     const Consensus::Params& consensusParams = params.GetConsensus();
     if (block.IsHiveMined(consensusParams)) {
         if (block.nBits != GetNextHiveWorkRequired(pindexPrev, consensusParams))
-            return state.DoS(100, false, REJECT_INVALID, "bad-hive-diffbits", false, "incorrect hive difficulty in block");
+            return state.Invalid(false, REJECT_INVALID, "bad-hive-diffbits", "incorrect hive difficulty in block");
     } else {
         if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
-            return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect pow difficulty in block");
+            return state.Invalid(false, REJECT_INVALID, "bad-diffbits", "incorrect pow difficulty in block");
     }
 
     if (fCheckpointsEnabled) {

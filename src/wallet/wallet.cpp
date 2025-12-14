@@ -4,6 +4,9 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <wallet/wallet.h>
+#include <algorithm>
+#include <random>
+#include <limits>
 
 #include <base58.h>
 #include <chain.h>
@@ -2104,7 +2107,8 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, const int nConfMin
     std::vector<CInputCoin> vValue;
     CAmount nTotalLower = 0;
 
-    random_shuffle(vCoins.begin(), vCoins.end(), GetRandInt);
+    std::mt19937_64 rng(GetRand(std::numeric_limits<uint64_t>::max()));
+    std::shuffle(vCoins.begin(), vCoins.end(), rng);
 
     for (const COutput& output : vCoins) {
         if (!output.fSpendable)

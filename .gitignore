@@ -145,8 +145,6 @@ src/.vscode/
 # ------------------------------------------------------------
 background.tiff*
 just*.sh
-build.sh
-cleanup.sh
 contrib/devtools/split-debug.sh
 
 # ------------------------------------------------------------

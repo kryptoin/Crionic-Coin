@@ -41,6 +41,7 @@ void CTxMemPoolEntry::UpdateFeeDelta(int64_t newFeeDelta)
     nModFeesWithDescendants += newFeeDelta - feeDelta;
     nModFeesWithAncestors += newFeeDelta - feeDelta;
     feeDelta = newFeeDelta;
+    invalidateCache();
 }
 
 void CTxMemPoolEntry::UpdateLockPoints(const LockPoints& lp)
@@ -267,13 +268,17 @@ void CTxMemPoolEntry::UpdateAncestorState(int64_t modifySize, CAmount modifyFee,
     assert(int64_t(nCountWithAncestors) > 0);
     nSigOpCostWithAncestors += modifySigOps;
     assert(int(nSigOpCostWithAncestors) >= 0);
+    invalidateCache();
 }
 
 CTxMemPool::CTxMemPool(CBlockPolicyEstimator* estimator) : nTransactionsUpdated(0), minerPolicyEstimator(estimator)
 {
     _clear();
 
+    _clear();
+
     nCheckFrequency = 0;
+    lastCacheInvalidation = 0;
 }
 
 bool CTxMemPool::isSpent(const COutPoint& outpoint)
@@ -337,6 +342,9 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry& entry,
     vTxHashes.emplace_back(tx.GetWitnessHash(), newit);
     newit->vTxHashesIdx = vTxHashes.size() - 1;
 
+    lastCacheInvalidation = GetTime();
+    metrics.recordAdd();
+
     return true;
 }
 
@@ -365,6 +373,8 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
     if (minerPolicyEstimator) {
         minerPolicyEstimator->removeTx(hash, false);
     }
+    lastCacheInvalidation = GetTime();
+    metrics.recordRemove();
 }
 
 void CTxMemPool::CalculateDescendants(txiter entryit, setEntries& setDescendants)
@@ -386,6 +396,20 @@ void CTxMemPool::CalculateDescendants(txiter entryit, setEntries& setDescendants
             }
         }
     }
+}
+
+void CTxMemPool::CalculateDescendantsCached(txiter entryit, setEntries &setDescendants) {
+    // Check cache first
+    auto cacheIt = descendantCache.find(entryit);
+    if (cacheIt != descendantCache.end() && 
+        cacheIt->second.timestamp > lastCacheInvalidation) {
+        setDescendants = cacheIt->second.descendants;
+        return;
+    }
+    
+    // Use original calculation but cache result
+    CalculateDescendants(entryit, setDescendants);
+    descendantCache[entryit] = {setDescendants, GetTime()};
 }
 
 void CTxMemPool::removeRecursive(const CTransaction& origTx, MemPoolRemovalReason reason)
